@@ -828,14 +828,14 @@ class InternalRealInterval(UniqueRepresentation, Parent):
         """
         return self * other
 
-    def left_point_with_epsilon(self, closure=False):
+    def __left_point_with_epsilon(self, closure=False):
         r"""Return (x, epsilon)
         where x is the left endpoint
         and epsilon is 0 if the interval is left closed and 1 otherwise.
         """
         pass
 
-    def right_point_with_epsilon(self, closure=False):
+    def __right_point_with_epsilon(self, closure=False):
         r"""Return (x, epsilon)
         where x is the right endpoint
         and epsilon is 0 if the interval is right opened and 1 otherwise.
