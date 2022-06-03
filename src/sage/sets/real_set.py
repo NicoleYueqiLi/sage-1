@@ -829,14 +829,14 @@ class InternalRealInterval(UniqueRepresentation, Parent):
         """
         return self * other
 
-    def __left_point_with_epsilon(self, closure=False):
+    def left_point_with_epsilon(self, closure=False):
         r"""Return (x, epsilon)
         where x is the left endpoint
         and epsilon is 0 if the interval is left closed and 1 otherwise.
         """
         pass
 
-    def __right_point_with_epsilon(self, closure=False):
+    def right_point_with_epsilon(self, closure=False):
         r"""Return (x, epsilon)
         where x is the right endpoint
         and epsilon is 0 if the interval is right opened and 1 otherwise.
@@ -1904,6 +1904,91 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             (-oo, +oo)
         """
         return RealSet(InternalRealInterval(RLF(minus_infinity), False, RLF(infinity), False), **kwds)
+
+    def scan_left_endpoint(self, tag=None, closure=False):
+        r"""Generate events of the form ``(x, epsilon), delta=-1, tag``.
+            This assumes that interval_list is sorted from left to right,
+            and that the intervals are pairwise disjoint.
+            """
+        for i in self._intervals:
+            yield i.left_point_with_epsilon(closure), -1, tag
+
+    def scan_right_endpoint(self, tag=None, closure=False):
+        r"""Generate events of the form ``(x, epsilon), delta=+1, tag``.
+        This assumes that interval_list is sorted from left to right,
+        and that the intervals are pairwise disjoint.
+        """
+        for i in self._intervals:
+            yield i.right_point_with_epsilon(closure), +1, tag
+
+    def scan_interval(self, tag=None, closure=False):
+        r"""Generate events of the form ``(x, epsilon), delta, tag``.
+        This assumes that interval_list is sorted, and
+        that the intervals are pairwise disjoint. (disjoint needed?)
+        delta is -1 for the beginning of an interval ('on').
+        delta is +1 for the end of an interval ('off').
+        This is so that the events sort lexicographically in a way that if
+        we have intervals whose closures intersect in one point, such as
+        [a, b) and [b, c], we see first the 'on' event and then the 'off'
+        event.  In this way consumers of the scan can easily implement merging
+        of such intervals.
+        if closure is ``True``, considers intervals as closed.
+        EXAMPLES::
+            sage: s1 = RealSet(RealSet.closed_open(1,2), (2, 3));
+            sage: list(RealSet.scan_interval(s1))
+            [((1, 0), -1, None), ((2, 0), 1, None), ((2, 1), -1, None), ((3, 0), 1, None)]
+
+        """
+        return merge(self.scan_left_endpoint(tag, closure), self.scan_right_endpoint(tag, closure))
+
+    @staticmethod
+    def intersection_of_interval_lists(interval_lists):
+        """Compute the intersection of the union of intervals.
+
+        INPUT:
+
+        - ``interval_lists`` -- a list/tuple/iterable of interval list.
+
+        OUTPUT:
+
+        The set-theoretic union as a new :class:`RealSet`.
+
+        EXAMPLES::
+            sage: RealSet.intersection_of_intervals([[[1,2], [2,3]], [[0,4]]])
+            [1, 3]
+            sage: RealSet.intersection_of_intervals([[[1,3], [2,4]], [[0,5]]])
+            [1, 4]
+            sage: RealSet.intersection_of_intervals([[[1,2], RealSet.open_closed(2,3)], [[0,4]]])
+            [1, 3]
+            sage: RealSet.intersection_of_intervals([[[1,3]], [[2,4]]])
+            [2, 3]
+        """
+
+        scan = []
+        intersection = []
+        for index, interval_list in enumerate(interval_lists):
+            real_set = RealSet(*interval_list)
+            scan.append(real_set.scan_interval(tag=index))
+        scan = merge(*scan)
+        interval_indicators = [0 for _ in interval_lists]
+        (on_x, on_epsilon) = (None, None)
+        for (x, epsilon), delta, index in scan:
+            was_on = all(on > 0 for on in interval_indicators)
+            interval_indicators[index] -= delta
+            assert interval_indicators[index] >= 0
+            now_on = all(on > 0 for on in interval_indicators)
+            if was_on:
+                assert on_x is not None
+                assert on_epsilon >= 0
+                assert epsilon >= 0
+                if (on_x, on_epsilon) < (x, epsilon):
+                    intersection.append(InternalRealInterval(on_x, on_epsilon == 0, x, epsilon > 0))
+            if now_on:
+                (on_x, on_epsilon) = (x, epsilon)
+            else:
+                (on_x, on_epsilon) = (None, None)
+        assert all(on == 0 for on in interval_indicators)  # no unbounded intervals
+        return RealSet(*intersection)
 
     def union(self, *other):
         """
