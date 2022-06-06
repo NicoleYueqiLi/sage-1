@@ -1979,6 +1979,8 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         The set-theoretic union as a new :class:`RealSet`.
 
         EXAMPLES::
+
+
             sage: RealSet.intersection_of_intervals([[[1,2], [2,3]], [[0,4]]])
             [1, 3]
             sage: RealSet.intersection_of_intervals([[[1,3], [2,4]], [[0,5]]])
@@ -2014,6 +2016,56 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
                 (on_x, on_epsilon) = (None, None)
         assert all(on == 0 for on in interval_indicators)  # no unbounded intervals
         return RealSet(*intersection)
+
+    @staticmethod
+    def union_of_intervals(interval_lists):
+        """Compute the intersection of the union of intervals.
+
+               INPUT:
+
+               - ``interval_lists`` -- a list/tuple/iterable of interval list.
+
+               OUTPUT:
+
+               The set-theoretic union as a new :class:`RealSet`.
+
+                EXAMPLES::
+
+
+                    sage: RealSet.union_of_intervals([[[1,2], [2,3]], [(0,4)]])
+                    [0, 4]
+                    sage: RealSet.union_of_intervals([[[1,3], [2,4]], [(0,5)]])
+                    (0, 5)
+                    sage: RealSet.union_of_intervals([[[1,2], RealSet.open_closed(2,3)], [[0,4]]])
+                    [0, 4]
+                    sage: RealSet.union_of_intervals([[[1,3]], [[2,4]]])
+                    [1, 4]
+               """
+        scan = []
+        union = []
+        for index, interval_list in enumerate(interval_lists):
+            real_set = RealSet(*interval_list)
+            scan.append(real_set.scan_interval(tag=index))
+        scan = merge(*scan)
+        interval_indicators = [0 for _ in interval_lists]
+        (on_x, on_epsilon) = (None, None)
+        for (x, epsilon), delta, index in scan:
+            was_on = any(on > 0 for on in interval_indicators)
+            interval_indicators[index] -= delta
+            assert interval_indicators[index] >= 0
+            now_on = any(on > 0 for on in interval_indicators)
+            if was_on:
+                assert on_x is not None
+                assert on_epsilon >= 0
+                assert epsilon >= 0
+                if (on_x, on_epsilon) < (x, epsilon):
+                    union.append(InternalRealInterval(on_x, on_epsilon == 0, x, epsilon > 0))
+            if now_on:
+                (on_x, on_epsilon) = (x, epsilon)
+            else:
+                (on_x, on_epsilon) = (None, None)
+        assert all(on == 0 for on in interval_indicators)  # no unbounded intervals
+        return RealSet(*union)
 
     def union(self, *other):
         """
