@@ -96,7 +96,7 @@ from sage.rings.real_lazy import LazyFieldElement, RLF
 from sage.rings.infinity import infinity, minus_infinity
 
 from sage.misc.superseded import deprecated_function_alias
-
+from heapq import *
 
 @richcmp_method
 class InternalRealInterval(UniqueRepresentation, Parent):
@@ -829,19 +829,43 @@ class InternalRealInterval(UniqueRepresentation, Parent):
         """
         return self * other
 
-    def left_point_with_epsilon(self, closure=False):
-        r"""Return (x, epsilon)
+
+    def left_point_with_epsilon(self):
+        r"""
+        Return an event for scanline
+
+        OUTPUT:
+
+        An event (x, epsilon):
+
         where x is the left endpoint
         and epsilon is 0 if the interval is left closed and 1 otherwise.
-        """
-        pass
 
-    def right_point_with_epsilon(self, closure=False):
-        r"""Return (x, epsilon)
-        where x is the right endpoint
-        and epsilon is 0 if the interval is right opened and 1 otherwise.
         """
-        pass
+        if self.is_empty():
+            raise ValueError("An empty interval does not have a left endpoint.")
+        elif self.is_point() or self._lower_closed:
+            return self._lower, 0
+        else:
+            return self._lower, 1
+
+    def right_point_with_epsilon(self):
+        r"""
+        Return an event for scanline
+
+        OUTPUT:
+
+        An event (x, epsilon):
+
+        where x is the right endpoint
+        and epsilon is 1 if the interval is right closed and 0 otherwise.
+        """
+        if self.is_empty():
+            raise ValueError("An empty interval does not have a left endpoint.")
+        elif self.is_point() or self._upper_closed:
+            return self._upper, 1
+        else:
+            return self._upper,  0
 
 
 @richcmp_method
@@ -1905,41 +1929,42 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         """
         return RealSet(InternalRealInterval(RLF(minus_infinity), False, RLF(infinity), False), **kwds)
 
-    def scan_left_endpoint(self, tag=None, closure=False):
-        r"""Generate events of the form ``(x, epsilon), delta=-1, tag``.
-            This assumes that interval_list is sorted from left to right,
-            and that the intervals are pairwise disjoint.
-            """
-        for i in self._intervals:
-            yield i.left_point_with_epsilon(closure), -1, tag
+    def scan_left_endpoint(self, tag=None):
+        r""" Generate events for scan line methods
 
-    def scan_right_endpoint(self, tag=None, closure=False):
-        r"""Generate events of the form ``(x, epsilon), delta=+1, tag``.
-        This assumes that interval_list is sorted from left to right,
-        and that the intervals are pairwise disjoint.
+        OUTPUT:
+
+        The event of the form  ``(x, epsilon), delta= -1, tag``
         """
         for i in self._intervals:
-            yield i.right_point_with_epsilon(closure), +1, tag
+            yield i.left_point_with_epsilon(), -1, tag
 
-    def scan_interval(self, tag=None, closure=False):
-        r"""Generate events of the form ``(x, epsilon), delta, tag``.
-        This assumes that interval_list is sorted, and
-        that the intervals are pairwise disjoint. (disjoint needed?)
+    def scan_right_endpoint(self, tag=None):
+        r""" Generate events for scan line methods
+
+        OUTPUT:
+
+        The event of the form  ``(x, epsilon), delta= +1, tag``
+        """
+        for i in self._intervals:
+            yield i.right_point_with_epsilon(), +1, tag
+
+    def scan_interval(self, tag=None):
+        r"""Construct an event for scan line
+
+        INPUT:
+
+        - ``tag`` -- a integer
+        -``closure`` -- a bool variable, if Ture, consider interval as closed
+
+        OUTPUT:
+        - A event of form ``(x, epsilon), delta, tag``
+
         delta is -1 for the beginning of an interval ('on').
         delta is +1 for the end of an interval ('off').
-        This is so that the events sort lexicographically in a way that if
-        we have intervals whose closures intersect in one point, such as
-        [a, b) and [b, c], we see first the 'on' event and then the 'off'
-        event.  In this way consumers of the scan can easily implement merging
-        of such intervals.
-        if closure is ``True``, considers intervals as closed.
-        EXAMPLES::
-            sage: s1 = RealSet(RealSet.closed_open(1,2), (2, 3));
-            sage: list(RealSet.scan_interval(s1))
-            [((1, 0), -1, None), ((2, 0), 1, None), ((2, 1), -1, None), ((3, 0), 1, None)]
 
         """
-        return merge(self.scan_left_endpoint(tag, closure), self.scan_right_endpoint(tag, closure))
+        return merge(self.scan_left_endpoint(tag), self.scan_right_endpoint(tag))
 
     @staticmethod
     def intersection_of_interval_lists(interval_lists):
