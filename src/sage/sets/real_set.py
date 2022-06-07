@@ -1967,7 +1967,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         return merge(self.scan_left_endpoint(tag), self.scan_right_endpoint(tag))
 
     @staticmethod
-    def intersection_of_interval_lists(interval_lists):
+    def intersection_of_realsets(interval_lists):
         """Compute the intersection of the union of intervals.
 
         INPUT:
@@ -1981,13 +1981,13 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         EXAMPLES::
 
 
-            sage: RealSet.intersection_of_intervals([[[1,2], [2,3]], [[0,4]]])
+            sage: RealSet.intersection_of_realsets([[[1,2], [2,3]], [[0,4]]])
             [1, 3]
-            sage: RealSet.intersection_of_intervals([[[1,3], [2,4]], [[0,5]]])
+            sage: RealSet.intersection_of_reslsets([[[1,3], [2,4]], [[0,5]]])
             [1, 4]
-            sage: RealSet.intersection_of_intervals([[[1,2], RealSet.open_closed(2,3)], [[0,4]]])
+            sage: RealSet.intersection_of_realsets([[[1,2], RealSet.open_closed(2,3)], [[0,4]]])
             [1, 3]
-            sage: RealSet.intersection_of_intervals([[[1,3]], [[2,4]]])
+            sage: RealSet.intersection_of_realsets([[[1,3]], [[2,4]]])
             [2, 3]
         """
 
@@ -2031,8 +2031,9 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
 
                 EXAMPLES::
 
-
-                    sage: RealSet.union_of_intervals([[[1,2], [2,3]], [(0,4)]])
+                    sage: s1 = RealSet([1, 2], [2, 3]);
+                    sage: s2 = RealSet([0, 4])
+                    sage: RealSet.union_of_intervals([[s1], [s2]])
                     [0, 4]
                     sage: RealSet.union_of_intervals([[[1,3], [2,4]], [(0,5)]])
                     (0, 5)
