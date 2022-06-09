@@ -1972,7 +1972,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
 
         INPUT:
 
-        - ``interval_lists`` -- a list/tuple/iterable of interval list.
+        - ``interval_lists`` -- a list/tuple/iterable of #TODO.
 
         OUTPUT:
 
@@ -1981,7 +1981,9 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         EXAMPLES::
 
 
-            sage: RealSet.intersection_of_realsets([[[1,2], [2,3]], [[0,4]]])
+            sage: s1 = RealSet([1,2], [2,3])
+            (x, epsilon), deta, tag
+            RealSet.intersection_of_realsets([[[1,2], [2,3]], [(0,4)]])
             [1, 3]
             sage: RealSet.intersection_of_reslsets([[[1,3], [2,4]], [[0,5]]])
             [1, 4]
@@ -2018,8 +2020,8 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         return RealSet(*intersection)
 
     @staticmethod
-    def union_of_intervals(interval_lists):
-        """Compute the intersection of the union of intervals.
+    def union_of_intervals_scan_line(realset_lists):
+        """Compute the union of real set lists.
 
                INPUT:
 
@@ -2029,23 +2031,22 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
 
                The set-theoretic union as a new :class:`RealSet`.
 
-                EXAMPLES::
-
-                    sage: s1 = RealSet([1, 2], [2, 3]);
-                    sage: s2 = RealSet([0, 4])
-                    sage: RealSet.union_of_intervals([[s1], [s2]])
-                    [0, 4]
-                    sage: RealSet.union_of_intervals([[[1,3], [2,4]], [(0,5)]])
-                    (0, 5)
-                    sage: RealSet.union_of_intervals([[[1,2], RealSet.open_closed(2,3)], [[0,4]]])
-                    [0, 4]
-                    sage: RealSet.union_of_intervals([[[1,3]], [[2,4]]])
-                    [1, 4]
+               EXAMPLES::
+                   sage: s1 = RealSet([1, 2], [2, 3])
+                   sage: s2 = RealSet((0, 4))
+                   sage: s3 = RealSet([0, 5])
+                   sage: RealSet.union_of_intervals([s1, s2])
+                   (0, 4)
+                   sage: RealSet.union_of_intervals([s2, s3])
+                   (0, 5]
+                   sage: RealSet.union_of_intervals([[[1,2], RealSet.open_closed(2,3)], [[0,4]]])
+                   [0, 4]
+                   sage: RealSet.union_of_intervals([[[1,3]], [[2,4]]])
+                   [1, 4]
                """
         scan = []
         union = []
-        for index, interval_list in enumerate(interval_lists):
-            real_set = RealSet(*interval_list)
+        for index, real_set in enumerate(realset_lists):
             scan.append(real_set.scan_interval(tag=index))
         scan = merge(*scan)
         interval_indicators = [0 for _ in interval_lists]
@@ -2066,6 +2067,21 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             else:
                 (on_x, on_epsilon) = (None, None)
         assert all(on == 0 for on in interval_indicators)  # no unbounded intervals
+        return tuple(union)
+        # sage: s1 = RealSet([1,2], [2,3]); s1
+        # [1, 3]
+        # sage: s2 = RealSet((0,4)); s2
+        # (0, 4)
+        # sage: RealSet.union_of_intervals_scan_line([s1,s2])
+        # ((0, 1), [1, 3], (3, 4))
+        # return RealSet(*union)
+        # (0, 4)
+
+    @staticmethod
+    def union_of_intervals_realset_methods(realset_lists):
+        union = []
+        for realset in realset_lists:
+            union.extend(realset._intervals)
         return RealSet(*union)
 
     def union(self, *other):
