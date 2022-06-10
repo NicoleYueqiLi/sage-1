@@ -2018,7 +2018,34 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
                 (on_x, on_epsilon) = (None, None)
         assert all(on == 0 for on in interval_indicators)  # no unbounded intervals
         return RealSet(*intersection)
+    # -------------------Test-------------------------------------
+    @staticmethod
+    def createRandomSortedList(num, start=1, end=10000):
+        arr = []
+        tmp = random.randint(start, end)
 
+        for x in range(num):
+
+            while tmp in arr:
+                tmp = random.randint(start, end)
+
+            arr.append(tmp)
+
+        arr.sort()
+
+        return arr
+
+    @staticmethod
+    def createRandomInterval(num):
+        arr = RealSet.createRandomSortedList(num // 2)
+        interval = []
+        for _ in arr:
+            a = arr.pop(0)
+            b = arr.pop(0)
+            interval.append([a, b])
+        return interval
+
+    # -----------------------------------------------------------
     @staticmethod
     def union_of_intervals_scan_line(realset_lists):
         """Compute the union of real set lists.
