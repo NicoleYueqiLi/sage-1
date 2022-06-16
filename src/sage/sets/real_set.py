@@ -1552,26 +1552,11 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             sage: RealSet(0,0)
             {}
         """
-        # sort by lower bound
         scan = []
-        union = []
         for index, interval in enumerate(intervals):
-            scan.append([interval.left_point_with_epsilon(tag=index)])
-            scan.append([interval.right_point_with_epsilon(tag=index)])
-        scan = merge(*scan)
-        active_realsets_num = 0
-        (on_x, on_epsilon) = (None, None)
-        was_on = False
-        for (x, epsilon), delta, index in scan:
-            active_realsets_num -= delta
-            now_on = active_realsets_num > 0
-            if was_on and not now_on:
-                union.append(InternalRealInterval(on_x, on_epsilon == 0, x, epsilon > 0))
-                (on_x, on_epsilon) = (None, None)
-            elif not was_on and now_on:
-                (on_x, on_epsilon) = (x, epsilon)
-            was_on = now_on
-        assert active_realsets_num == 0  # no unbounded intervals
+            scan.append([interval.scan_left_endpoint()])
+            scan.append([interval.scan_right_endpoint()])
+        union = RealSet.scan_line_union(scan)
         return tuple(union)
 
     def _repr_(self):
@@ -2080,7 +2065,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
 
         scan = []
         intersection = []
-        for index, interval_list in enumerate(realset_lists):
+        for index, real_set in enumerate(realset_lists):
             scan.append(real_set.scan_interval(tag=index))
         scan = merge(*scan)
         interval_indicators = [0 for _ in realset_lists]
@@ -2091,9 +2076,6 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             assert interval_indicators[index] >= 0
             now_on = all(on > 0 for on in interval_indicators)
             if was_on:
-                assert on_x is not None
-                assert on_epsilon >= 0
-                assert epsilon >= 0
                 if (on_x, on_epsilon) < (x, epsilon):
                     intersection.append(InternalRealInterval(on_x, on_epsilon == 0, x, epsilon > 0))
             if now_on:
@@ -2102,6 +2084,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
                 (on_x, on_epsilon) = (None, None)
         assert all(on == 0 for on in interval_indicators)  # no unbounded intervals
         return RealSet(*intersection)
+
     # -------------------Test-------------------------------------
 
     @staticmethod
@@ -2132,6 +2115,29 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
 
     # -----------------------------------------------------------
     @staticmethod
+    def scan_line_union(scan):
+        """
+        Helper function for union of realset and constructor
+        """
+        union = []
+        scan = merge(*scan)
+        interval_indicator = 0
+        (on_x, on_epsilon) = (None, None)
+        was_on = False
+        for (x, epsilon), delta, index in scan:
+            interval_indicator -= delta
+            now_on = (interval_indicator > 0)
+            if was_on and not now_on:
+                union.append(InternalRealInterval(on_x, on_epsilon == 0, x, epsilon > 0))
+                (on_x, on_epsilon) = (None, None)
+            elif not was_on and now_on:
+                (on_x, on_epsilon) = (x, epsilon)
+            elif not was_on and not now_on:
+                raise NameError('not was_on and not now_on is impossible - need debug')
+            was_on = now_on
+        return union
+
+    @staticmethod
     def union_of_intervals_scan_line(realset_lists):
         """Compute the union of real set lists.
 
@@ -2156,25 +2162,11 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
                    sage: RealSet.union_of_intervals([[[1,3]], [[2,4]]])
                    [1, 4]
                """
+
         scan = []
-        union = []
-        for index, real_set in enumerate(realset_lists):
-            scan.append(real_set.scan_interval(tag=index))
-        scan = merge(*scan)
-        active_realsets_num = 0
-        (on_x, on_epsilon) = (None, None)
-        was_on = False
-        for (x, epsilon), delta, index in scan:
-            active_realsets_num -= delta
-            now_on = active_realsets_num > 0
-            if was_on and not now_on:
-                union.append(InternalRealInterval(on_x, on_epsilon == 0, x, epsilon > 0))
-                (on_x, on_epsilon) = (None, None)
-            elif not was_on and now_on:
-                (on_x, on_epsilon) = (x, epsilon)
-            elif not was_on and not now_on:
-                raise NameError('not was_on and not now_on is impossible - need debug')
-            was_on = now_on
+        for real_set in realset_lists:
+            scan.append(real_set.scan_interval())
+        union = real_set.scan_line_union(scan)
         return RealSet(*union)
 
     @staticmethod
@@ -2210,8 +2202,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             (0, 3)
         """
         other = RealSet(*other)
-        intervals = self._intervals + other._intervals
-        return RealSet(*intervals)
+        return RealSet.union_of_realsets_scan_line([self, other])
 
     def intersection(self, *other):
         """
@@ -2249,41 +2240,8 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             sage: s2.intersection(s3)
             {1} ∪ {2}
         """
-
         other = RealSet(*other)
-        # # TODO: this can be done in linear time since the intervals are already sorted
-        intervals = []
-        i = j = 0
-        while i < len(self._intervals) and j < len(other._intervals):
-            # if self upper interval < other lower interval or self.upper == other.lower and not closed
-            # i + 1 (self move to next interval) no intersection
-            if (self._intervals[i].upper() < other._intervals[j].lower()) or \
-                    (self._intervals[i].upper() == other._intervals[j].lower() and
-                     not (self._intervals[i].upper_closed() and other._intervals[j].lower_closed())):
-                i += 1
-            # if other upper interval < self lower interval or (self.upper == other.lower and both open)
-            # j + 1 (other move to next interval) no intersection
-            elif (other._intervals[j].upper() < self._intervals[i].lower()) or \
-                    (other._intervals[j].upper() == self._intervals[i].lower() and
-                     not (other._intervals[j].upper_closed() and self._intervals[i].lower_closed())):
-                j += 1
-            # has intersection
-            else:
-                intervals.append(self._intervals[i].intersection(other._intervals[j]))
-                # if interval upper < other upper or (interval upper == other interval's upper
-                # and one is open another is closed self move to next interval
-                if (self._intervals[i].upper() < other._intervals[j].upper()) or \
-                        (self._intervals[i].upper() == other._intervals[j].upper()
-                         and not (self._intervals[i].upper_closed()
-                                  and not other._intervals[j].upper_closed())):
-                    i += 1
-                # else: move other to next interval
-                else:
-                    j += 1
-        # for i1 in self._intervals:
-        #     for i2 in other._intervals:
-        #         intervals.append(i1.intersection(i2))
-        return RealSet(*intervals)
+        return RealSet.intersection_of_realset([self, other])
 
     def inf(self):
         """
