@@ -829,43 +829,85 @@ class InternalRealInterval(UniqueRepresentation, Parent):
         """
         return self * other
 
-
-    def left_point_with_epsilon(self):
+    def scan_left_endpoint(self, tag=None):
         r"""
         Return an event for scanline
 
+        INPUT:
+
+        - ``tag`` -- a real number.
+
         OUTPUT:
 
-        An event (x, epsilon):
+        An event (x, epsilon), delta, tag:
 
         where x is the left endpoint
         and epsilon is 0 if the interval is left closed and 1 otherwise.
 
-        """
-        if self.is_empty():
-            raise ValueError("An empty interval does not have a left endpoint.")
-        elif self.is_point() or self._lower_closed:
-            return self._lower, 0
-        else:
-            return self._lower, 1
+        EXAMPLES::
 
-    def right_point_with_epsilon(self):
+
+            sage: I1 = RealSet.open_closed(0,2)[0]; I1
+            (0, 2]
+            sage: I1.scan_left_endpoint()
+            ((0, 1), -1, None)
+            sage: I2 = RealSet([0,2])[0]; I2
+            [0, 2]
+            sage: I2.scan_left_endpoint()
+            ((0, 0), -1, None)
+            sage: I3 = RealSet([1,1])[0]; I3
+            {1}
+            sage: I3.scan_left_endpoint()
+            ((1, 0), -1, None)
+            sage: I4 = RealSet([-oo,1])[0]; I4
+            (-oo, 0)
+            sage: I4.scan_left_endpoint()
+            (([-infinity .. -infinity], 1), -1, None
+        """
+        if self.is_point() or self._lower_closed:
+            return (self._lower, 0), -1, tag
+        else:
+            return (self._lower, 1), -1, tag
+
+    def scan_right_endpoint(self, tag=None):
         r"""
-        Return an event for scanline
+        Return an event for scan line
+
+        INPUT:
+
+        - ``tag`` -- a real number.
 
         OUTPUT:
 
-        An event (x, epsilon):
+        An event (x, epsilon), delta, tag.
 
         where x is the right endpoint
         and epsilon is 1 if the interval is right closed and 0 otherwise.
+
+        EXAMPLES::
+
+
+            sage: I1 = RealSet.closed_open(0,2)[0]; I1
+            (0, 2]
+            sage: I1.scan_right_endpoint()
+            ((2, 0), 1, None)
+            sage: I2 = RealSet([0,2])[0]; I2
+            [0, 2]
+            sage: I2.scan_left_endpoint()
+            ((2, 1), 1, None)
+            sage: I3 = RealSet([1,1])[0]; I3
+            {1}
+            sage: I3.scan_left_endpoint()
+            ((1, 1), 1, None)
+            sage: I4 = RealSet((0,oo))[0]; I4
+            ((0, +oo)
+            sage: I4.scan_left_endpoint()
+            ((+Infinity, 0), 1, None)
         """
-        if self.is_empty():
-            raise ValueError("An empty interval does not have a left endpoint.")
-        elif self.is_point() or self._upper_closed:
-            return self._upper, 1
+        if self.is_point() or self._upper_closed:
+            return (self._upper, 1), +1, tag
         else:
-            return self._upper,  0
+            return (self._upper, 0), +1, tag
 
 
 @richcmp_method
@@ -1934,36 +1976,78 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
     def scan_left_endpoint(self, tag=None):
         r""" Generate events for scan line methods
 
+         INPUT:
+
+        - ``tag`` -- a real number.
+
         OUTPUT:
 
         The event of the form  ``(x, epsilon), delta= -1, tag``
+
+        EXAMPLES::
+        sage: s = RealSet((-oo,0), RealSet.closed_open(1,2), (2, 3), [4, 4]); s
+        (-oo, 0) ∪ [1, 2) ∪ (2, 3) ∪ {4}
+        sage: list(s.scan_left_endpoint())
+        [(([-infinity .. -infinity], 1), -1, None),
+        ((1, 0), -1, None),
+        ((2, 1), -1, None),
+        ((4, 0), -1, None)]
         """
         for i in self._intervals:
-            yield i.left_point_with_epsilon(), -1, tag
+            yield i.scan_left_endpoint(tag)
 
     def scan_right_endpoint(self, tag=None):
         r""" Generate events for scan line methods
 
+         INPUT:
+
+        - ``tag`` -- a real number.
+
         OUTPUT:
 
         The event of the form  ``(x, epsilon), delta= +1, tag``
+
+        EXAMPLES::
+        sage: s = RealSet(RealSet.open_closed(0,1), (2, 3), [4, 4],(5, oo)); s
+        (0, 1] ∪ (2, 3) ∪ {4} ∪ (5, +oo)
+        sage: list(s.scan_right_endpoint())
+        [((1, 1), 1, None),
+        ((3, 0), 1, None),
+        ((4, 1), 1, None),
+        ((+Infinity, 0), 1, None)]
         """
         for i in self._intervals:
-            yield i.right_point_with_epsilon(), +1, tag
+            yield i.scan_right_endpoint(tag)
 
     def scan_interval(self, tag=None):
-        r"""Construct an event for scan line
+        r"""
+        Generate events for scan line methods
 
-        INPUT:
+         INPUT:
 
-        - ``tag`` -- a integer
-        -``closure`` -- a bool variable, if Ture, consider interval as closed
+        - ``tag`` -- a real number.
 
         OUTPUT:
-        - A event of form ``(x, epsilon), delta, tag``
+
+        Events of the form ``(x, epsilon), delta, tag``.
 
         delta is -1 for the beginning of an interval ('on').
         delta is +1 for the end of an interval ('off').
+
+        EXAMPLES::
+            sage: s = RealSet((-oo,0),RealSet.open_closed(0,1),(2, 3),[4, 5], [5,5], (6,oo)); s
+            (-oo, 0) ∪ (0, 1] ∪ (2, 3) ∪ [4, 5] ∪ (6, +oo)
+            sage: list(RealSet.scan_interval(s))
+            [(([-infinity .. -infinity], 1), -1, None),
+            ((0, 0), 1, None),
+            ((0, 1), -1, None),
+            ((1, 1), 1, None),
+            ((2, 1), -1, None),
+            ((3, 0), 1, None),
+            ((4, 0), -1, None),
+            ((5, 1), 1, None),
+            ((6, 1), -1, None),
+            ((+Infinity, 0), 1, None)]
 
         """
         return merge(self.scan_left_endpoint(tag), self.scan_right_endpoint(tag))
@@ -1982,7 +2066,6 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
 
         EXAMPLES::
 
-
             sage: s1 = RealSet([1,2], [2,3])
             (x, epsilon), deta, tag
             RealSet.intersection_of_realsets([[[1,2], [2,3]], [(0,4)]])
@@ -2000,7 +2083,6 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         for index, interval_list in enumerate(realset_lists):
             scan.append(real_set.scan_interval(tag=index))
         scan = merge(*scan)
-        # TODO
         interval_indicators = [0 for _ in realset_lists]
         (on_x, on_epsilon) = (None, None)
         for (x, epsilon), delta, index in scan:
@@ -2021,6 +2103,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         assert all(on == 0 for on in interval_indicators)  # no unbounded intervals
         return RealSet(*intersection)
     # -------------------Test-------------------------------------
+
     @staticmethod
     def createRandomSortedList(num, start=1, end=10000):
         arr = []
