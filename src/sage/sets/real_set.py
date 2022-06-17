@@ -2127,15 +2127,18 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         for (x, epsilon), delta, index in scan:
             interval_indicator -= delta
             now_on = (interval_indicator > 0)
-            if was_on and not now_on:
+            if not was_on and not now_on:
+                return union
+            elif was_on and not now_on:
+                if (x == infinity or x == minus_infinity) and x == on_x:
+                    return union
                 union.append(InternalRealInterval(on_x, on_epsilon == 0, x, epsilon > 0))
                 (on_x, on_epsilon) = (None, None)
             elif not was_on and now_on:
                 (on_x, on_epsilon) = (x, epsilon)
-            elif not was_on and not now_on:
-                raise NameError('not was_on and not now_on is impossible - need debug')
             was_on = now_on
         return union
+
 
     @staticmethod
     def union_of_intervals_scan_line(realset_lists):
