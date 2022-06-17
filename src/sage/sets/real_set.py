@@ -2215,7 +2215,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             (0, 3)
         """
         other = RealSet(*other)
-        return RealSet.union_of_realsets_scan_line([self, other])
+        return RealSet.union_of_realsets([self, other])
 
     def intersection(self, *other):
         """
@@ -2254,7 +2254,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             {1} ∪ {2}
         """
         other = RealSet(*other)
-        return RealSet.intersection_of_realset([self, other])
+        return RealSet.intersection_of_realsets([self, other])
 
     def inf(self):
         """
@@ -2379,6 +2379,29 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         """
         other = RealSet(*other)
         return self.intersection(other.complement())
+
+    def scan_difference(self, *remove_lists):
+        remove_lists = RealSet(*remove_lists)
+        scan = merge(merge(*[self.scan_interval(True)]),
+                     merge(*[remove_lists.scan_interval(False)]))
+        interval_indicator = 0
+        remove_indicator = 0
+        on = False
+        scan_res = []
+        for ((x, epsilon), delta, tag) in scan:
+            was_on = on
+            if tag:  # interval event
+                interval_indicator -= delta
+            else:  # remove event
+                remove_indicator -= delta
+            now_on = interval_indicator > 0 and remove_indicator == 0
+            if not was_on and now_on:  # switched on
+                scan_res.append([((x, epsilon), -1, None)])
+            elif was_on and not now_on:  # switched off
+                scan_res.append([((x, epsilon), +1, None)])
+            on = now_on
+        res = RealSet.scan_line_union(scan_res)
+        return RealSet(*res)
 
     def symmetric_difference(self, *other):
         r"""
