@@ -2139,9 +2139,8 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             was_on = now_on
         return union
 
-
     @staticmethod
-    def union_of_intervals_scan_line(realset_lists):
+    def union_of_realsets(realset_lists):
         """Compute the union of real set lists.
 
                INPUT:
@@ -2153,17 +2152,28 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
                The set-theoretic union as a new :class:`RealSet`.
 
                EXAMPLES::
-                   sage: s1 = RealSet([1, 2], [2, 3])
-                   sage: s2 = RealSet((0, 4))
-                   sage: s3 = RealSet([0, 5])
-                   sage: RealSet.union_of_intervals([s1, s2])
-                   (0, 4)
-                   sage: RealSet.union_of_intervals([s2, s3])
-                   (0, 5]
-                   sage: RealSet.union_of_intervals([[[1,2], RealSet.open_closed(2,3)], [[0,4]]])
-                   [0, 4]
-                   sage: RealSet.union_of_intervals([[[1,3]], [[2,4]]])
-                   [1, 4]
+                   sage: s1 = RealSet([1, 2], (2, 3)); s1
+                   [1, 3)
+                   sage: s2 = RealSet([-1, -1]); s2
+                   {-1}
+                   sage: s3 = RealSet(3, oo); s3
+                   (3, +oo)
+                   sage: s4 = RealSet(RealSet.closed_open(3, 5), (1, 2)); s4
+                   (1, 2) ∪ [3, 5)
+                   sage: s5 = RealSet(0,0); s5
+                   {}
+                   sage: RealSet.union_of_realsets([s1, s2])
+                   {-1} ∪ [1, 3)
+                   sage: RealSet.union_of_realsets([s1, s3])
+                   [1, 3) ∪ (3, +oo)
+                   sage: RealSet.union_of_realsets([s1, s2, s3])
+                   {-1} ∪ [1, 3) ∪ (3, +oo)
+                   sage: RealSet.union_of_realsets([s1, s2, s4])
+                   {-1} ∪ [1, 5)
+                   sage: RealSet.union_of_realsets([s1, s2, s3, s4])
+                   {-1} ∪ [1, +oo)
+                   sage: RealSet.union_of_realsets([s1, s2, s3, s4, s5])
+                   {-1} ∪ [1, +oo)
                """
 
         scan = []
