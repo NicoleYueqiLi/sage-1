@@ -859,10 +859,10 @@ class InternalRealInterval(UniqueRepresentation, Parent):
             {1}
             sage: I3.scan_left_endpoint()
             ((1, 0), -1, None)
-            sage: I4 = RealSet([-oo,1])[0]; I4
-            (-oo, 0)
+            sage: I4 = RealSet((-oo,1))[0]; I4
+            (-oo, 1)
             sage: I4.scan_left_endpoint()
-            (([-infinity .. -infinity], 1), -1, None
+            ((-Infinity, 1), -1, None)
         """
         if self.is_point() or self._lower_closed:
             return (self._lower, 0), -1, tag
@@ -888,20 +888,20 @@ class InternalRealInterval(UniqueRepresentation, Parent):
 
 
             sage: I1 = RealSet.closed_open(0,2)[0]; I1
-            (0, 2]
+            [0, 2)
             sage: I1.scan_right_endpoint()
             ((2, 0), 1, None)
             sage: I2 = RealSet([0,2])[0]; I2
             [0, 2]
-            sage: I2.scan_left_endpoint()
+            sage: I2.scan_right_endpoint()
             ((2, 1), 1, None)
             sage: I3 = RealSet([1,1])[0]; I3
             {1}
-            sage: I3.scan_left_endpoint()
+            sage: I3.scan_right_endpoint()
             ((1, 1), 1, None)
             sage: I4 = RealSet((0,oo))[0]; I4
-            ((0, +oo)
-            sage: I4.scan_left_endpoint()
+            (0, +oo)
+            sage: I4.scan_right_endpoint()
             ((+Infinity, 0), 1, None)
         """
         if self.is_point() or self._upper_closed:
@@ -1973,7 +1973,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         sage: s = RealSet((-oo,0), RealSet.closed_open(1,2), (2, 3), [4, 4]); s
         (-oo, 0) ∪ [1, 2) ∪ (2, 3) ∪ {4}
         sage: list(s.scan_left_endpoint())
-        [(([-infinity .. -infinity], 1), -1, None),
+        [((-Infinity, 1), -1, None),
         ((1, 0), -1, None),
         ((2, 1), -1, None),
         ((4, 0), -1, None)]
@@ -2023,7 +2023,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             sage: s = RealSet((-oo,0),RealSet.open_closed(0,1),(2, 3),[4, 5], [5,5], (6,oo)); s
             (-oo, 0) ∪ (0, 1] ∪ (2, 3) ∪ [4, 5] ∪ (6, +oo)
             sage: list(RealSet.scan_interval(s))
-            [(([-infinity .. -infinity], 1), -1, None),
+            [((-Infinity, 1), -1, None),
             ((0, 0), 1, None),
             ((0, 1), -1, None),
             ((1, 1), 1, None),
@@ -2051,16 +2051,28 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
 
         EXAMPLES::
 
-            sage: s1 = RealSet([1,2], [2,3])
-            (x, epsilon), deta, tag
-            RealSet.intersection_of_realsets([[[1,2], [2,3]], [(0,4)]])
-            [1, 3]
-            sage: RealSet.intersection_of_reslsets([[[1,3], [2,4]], [[0,5]]])
-            [1, 4]
-            sage: RealSet.intersection_of_realsets([[[1,2], RealSet.open_closed(2,3)], [[0,4]]])
-            [1, 3]
-            sage: RealSet.intersection_of_realsets([[[1,3]], [[2,4]]])
-            [2, 3]
+            sage: s1 = RealSet(0,2) + RealSet.unbounded_above_closed(10);  s1
+            (0, 2) ∪ [10, +oo)
+            sage: s2 = RealSet(1,3) + RealSet.unbounded_below_closed(-10);  s2
+            (-oo, -10] ∪ (1, 3)
+            sage: s3 = RealSet([1, 1]); s3
+            {1}
+            sage: s4 = RealSet(RealSet.open_closed(0, 2), RealSet.closed_open(-11, -1), RealSet.open_closed(5,10)); s4
+            [-11, -1) ∪ (0, 2] ∪ (5, 10]
+            sage: RealSet.intersection_of_realsets([s1, s2])
+            (1, 2)
+            sage: RealSet.intersection_of_realsets([s1, s3])
+            {1}
+            sage: RealSet.intersection_of_realsets([s2, s3])
+            {}
+            sage: RealSet.intersection_of_realsets([s1, s2, s3])
+            {}
+            sage: RealSet.intersection_of_realsets([s1, s4])
+            (0, 2) ∪ {10}
+            sage: RealSet.intersection_of_realsets([s2, s4])
+            [-11, -10] ∪ (1, 2]
+            sage: RealSet.intersection_of_realsets([s1, s2, s4])
+            (1, 2)
         """
 
         scan = []
@@ -2145,7 +2157,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
 
                INPUT:
 
-               - ``interval_lists`` -- a list/tuple/iterable of interval list.
+               - ``interval_lists`` -- a list/tuple/iterable of RealSet
 
                OUTPUT:
 
@@ -2739,7 +2751,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             sage: A * 100
             [0, 50] ∪ (200, +oo)
             sage: 1.5 * A
-            [0.000000000000000, 0.750000000000000] ∪ (3.00000000000000, +oo)
+            [0.000000000000000, 0.750000000000000] ∪ (3, +oo)
             sage: (-2) * A
             (-oo, -4) ∪ [-1, 0]
         """
