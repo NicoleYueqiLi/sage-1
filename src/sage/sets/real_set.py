@@ -2394,8 +2394,8 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
 
     def scan_difference(self, *remove_lists):
         remove_lists = RealSet(*remove_lists)
-        scan = merge(merge(*[self.scan_interval(True)]),
-                     merge(*[remove_lists.scan_interval(False)]))
+        scan = merge(self.scan_interval(True),
+                     remove_lists.scan_interval(False))
         interval_indicator = 0
         remove_indicator = 0
         on = False
