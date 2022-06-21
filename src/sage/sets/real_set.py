@@ -2038,7 +2038,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         return merge(self.scan_left_endpoint(tag), self.scan_right_endpoint(tag))
 
     @staticmethod
-    def intersection_of_realsets(realset_lists):
+    def intersection_of_realsets(realsets):
         """Compute the intersection of the union of intervals.
 
         INPUT:
@@ -2077,10 +2077,10 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
 
         scan = []
         intersection = []
-        for index, real_set in enumerate(realset_lists):
+        for index, real_set in enumerate(realsets):
             scan.append(real_set.scan_interval(tag=index))
         scan = merge(*scan)
-        interval_indicators = [0 for _ in realset_lists]
+        interval_indicators = [0 for _ in realsets]
         (on_x, on_epsilon) = (None, None)
         for (x, epsilon), delta, index in scan:
             was_on = all(on > 0 for on in interval_indicators)
@@ -2152,7 +2152,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         return union
 
     @staticmethod
-    def union_of_realsets(realset_lists):
+    def union_of_realsets(realsets):
         """Compute the union of real set lists.
 
                INPUT:
@@ -2189,7 +2189,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
                """
 
         scan = []
-        for real_set in realset_lists:
+        for real_set in realsets:
             scan.append(real_set.scan_interval())
         union = real_set.scan_line_union(scan)
         return RealSet(*union)
@@ -2395,14 +2395,14 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         scan_res = []
         for ((x, epsilon), delta, tag) in scan:
             was_on = on
-            if tag:  # interval event
+            if tag:
                 interval_indicator -= delta
-            else:  # remove event
+            else:
                 remove_indicator -= delta
             now_on = interval_indicator > 0 and remove_indicator == 0
-            if not was_on and now_on:  # switched on
+            if not was_on and now_on:
                 scan_res.append([((x, epsilon), -1, None)])
-            elif was_on and not now_on:  # switched off
+            elif was_on and not now_on:
                 scan_res.append([((x, epsilon), +1, None)])
             on = now_on
         res = RealSet.scan_line_union(scan_res)
@@ -2686,12 +2686,12 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             True
         """
         other = RealSet(*other)
-        return self.intersection(other).is_empty()
+        return self.are_pairwise_disjoint([self, other])
 
     is_disjoint_from = deprecated_function_alias(31927, is_disjoint)
 
     @staticmethod
-    def are_pairwise_disjoint(*real_set_collection):
+    def are_pairwise_disjoint(realsets):
         """
         Test whether sets are pairwise disjoint
 
@@ -2709,20 +2709,32 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             sage: s1 = RealSet((0, 1), (2, 3))
             sage: s2 = RealSet((1, 2))
             sage: s3 = RealSet.point(3)
-            sage: RealSet.are_pairwise_disjoint(s1, s2, s3)
+            sage: s4 = s4 = RealSet([1, -1/2])
+            sage: RealSet.are_pairwise_disjoint([s1, s2, s3])
             True
-            sage: RealSet.are_pairwise_disjoint(s1, s2, s3, [10,10])
+            sage: sage: RealSet.are_pairwise_disjoint([s1, s2, s3, RealSet.point(10)])
             True
-            sage: RealSet.are_pairwise_disjoint(s1, s2, s3, [-1, 1/2])
+            sage: RealSet.are_pairwise_disjoint([s1, s2, s3, s4])
             False
         """
-        sets = [RealSet(_) for _ in real_set_collection]
-        for i in range(len(sets)):
-            for j in range(i):
-                si = sets[i]
-                sj = sets[j]
-                if not si.is_disjoint(sj):
+        scan = []
+        for real_set in realsets:
+            scan.append(real_set.scan_interval())
+        scan = merge(*scan)
+        interval_indicator = 0
+        (on_x, on_epsilon) = (None, None)
+        was_on = False
+        for (x, epsilon), delta, index in scan:
+            interval_indicator -= delta
+            now_on = (interval_indicator > 1)
+            if not was_on and not now_on:
+                (on_x, on_epsilon) = (None, None)
+            elif was_on and not now_on:
+                if (on_x, on_epsilon) < (x, epsilon):
                     return False
+            elif not was_on and now_on:
+                (on_x, on_epsilon) = (x, epsilon)
+            was_on = now_on
         return True
 
     def _sage_input_(self, sib, coerced):
