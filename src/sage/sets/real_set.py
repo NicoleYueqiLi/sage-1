@@ -864,7 +864,7 @@ class InternalRealInterval(UniqueRepresentation, Parent):
             sage: I4.scan_left_endpoint()
             ((-Infinity, 1), -1, None)
         """
-        if self.is_point() or self._lower_closed:
+        if self._lower_closed:
             return (self._lower, 0), -1, tag
         else:
             return (self._lower, 1), -1, tag
@@ -904,7 +904,7 @@ class InternalRealInterval(UniqueRepresentation, Parent):
             sage: I4.scan_right_endpoint()
             ((+Infinity, 0), 1, None)
         """
-        if self.is_point() or self._upper_closed:
+        if self._upper_closed:
             return (self._upper, 1), +1, tag
         else:
             return (self._upper, 0), +1, tag
@@ -2129,7 +2129,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
     @staticmethod
     def scan_line_union(scan):
         """
-        Helper function for union of realset and constructor
+        Helper function for union of :class:`RealSet` and constructor
         """
         union = []
         scan = merge(*scan)
@@ -2392,8 +2392,8 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         other = RealSet(*other)
         return self.intersection(other.complement())
 
-    def scan_difference(self, *remove_lists):
-        remove_lists = RealSet(*remove_lists)
+    def scan_difference(self, *other):
+        remove_lists = RealSet(*other)
         scan = merge(self.scan_interval(True),
                      remove_lists.scan_interval(False))
         interval_indicator = 0
@@ -2622,6 +2622,52 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
 
         """
         return RealSet(*[RealSet.point(x) for i in self._intervals for x in i.boundary_points()])
+
+    @staticmethod
+    def convex_hull(realsets):
+        """
+        Return the convex hull of a list of :class:`RealInterval`
+
+        INPUT:
+
+        - ``realsets`` -- a list/tuple/iterable of :class:`RealSet`.
+
+        OUTPUT:
+
+        The convex hull as a new :class:`RealInterval`.
+
+        EXAMPLES::
+
+            sage: s1 = RealSet(0,2) + RealSet.unbounded_above_closed(10);  s1
+            (0, 2) ∪ [10, +oo)
+            sage: s2 = s2 = RealSet(1,3) + RealSet.unbounded_below_closed(-10);  s2
+            (-oo, -10] ∪ (1, 3)
+            sage: s3 = RealSet((0,2),RealSet.point(8)); s3
+            (0, 2) ∪ {8}
+            sage: s4 = RealSet.(0,0); s4
+            {}
+            sage: RealSet.convex_hull([s1])
+            (0, +oo)
+            sage: RealSet.convex_hull([s2])
+            (-oo, 3)
+            sage: RealSet.convex_hull([s3])
+            (0, 8]
+            sage: RealSet.convex_hull([s1, s2])
+            (-oo, +oo)
+            sage: RealSet.convex_hull([s2, s3])
+            (-oo, 8]
+            sage: RealSet.convex_hull([s2, s3, s4])
+            (-oo, 8]
+        """
+        scan = []
+        for real_set in realsets:
+            scan.append(real_set.scan_interval())
+        scan = list(merge(*scan))
+        (x1, epsilon1) = scan[0][0]
+        (x2, epsilon2) = scan[-1][0]
+        left_close = True if epsilon1 == 0 else False
+        right_close = False if epsilon2 == 0 else True
+        return InternalRealInterval(x1, left_close, x2, right_close)
 
     def is_disjoint(self, *other):
         """
