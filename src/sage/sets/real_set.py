@@ -2140,7 +2140,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             interval_indicator -= delta
             now_on = (interval_indicator > 0)
             if not was_on and not now_on:
-                return union
+                (on_x, on_epsilon) = (None, None)
             elif was_on and not now_on:
                 if (x == infinity or x == minus_infinity) and x == on_x:
                     return union
@@ -2192,13 +2192,6 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         for real_set in realset_lists:
             scan.append(real_set.scan_interval())
         union = real_set.scan_line_union(scan)
-        return RealSet(*union)
-
-    @staticmethod
-    def union_of_intervals_realset_methods(realset_lists):
-        union = []
-        for realset in realset_lists:
-            union.extend(realset._intervals)
         return RealSet(*union)
 
     def union(self, *other):
