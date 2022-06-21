@@ -829,9 +829,9 @@ class InternalRealInterval(UniqueRepresentation, Parent):
         """
         return self * other
 
-    def scan_left_endpoint(self, tag=None):
+    def _scan_left_endpoint(self, tag=None):
         r"""
-        Return an event for scanline
+        Return an event for scan-line method
 
         INPUT:
 
@@ -849,19 +849,19 @@ class InternalRealInterval(UniqueRepresentation, Parent):
 
             sage: I1 = RealSet.open_closed(0,2)[0]; I1
             (0, 2]
-            sage: I1.scan_left_endpoint()
+            sage: I1._scan_left_endpoint()
             ((0, 1), -1, None)
             sage: I2 = RealSet([0,2])[0]; I2
             [0, 2]
-            sage: I2.scan_left_endpoint()
+            sage: I2._scan_left_endpoint()
             ((0, 0), -1, None)
             sage: I3 = RealSet([1,1])[0]; I3
             {1}
-            sage: I3.scan_left_endpoint()
+            sage: I3._scan_left_endpoint()
             ((1, 0), -1, None)
             sage: I4 = RealSet((-oo,1))[0]; I4
             (-oo, 1)
-            sage: I4.scan_left_endpoint()
+            sage: I4._scan_left_endpoint()
             ((-Infinity, 1), -1, None)
         """
         if self._lower_closed:
@@ -869,9 +869,9 @@ class InternalRealInterval(UniqueRepresentation, Parent):
         else:
             return (self._lower, 1), -1, tag
 
-    def scan_right_endpoint(self, tag=None):
+    def _scan_right_endpoint(self, tag=None):
         r"""
-        Return an event for scan line
+        Return an event for scan-line method
 
         INPUT:
 
@@ -889,19 +889,19 @@ class InternalRealInterval(UniqueRepresentation, Parent):
 
             sage: I1 = RealSet.closed_open(0,2)[0]; I1
             [0, 2)
-            sage: I1.scan_right_endpoint()
+            sage: I1._scan_right_endpoint()
             ((2, 0), 1, None)
             sage: I2 = RealSet([0,2])[0]; I2
             [0, 2]
-            sage: I2.scan_right_endpoint()
+            sage: I2._scan_right_endpoint()
             ((2, 1), 1, None)
             sage: I3 = RealSet([1,1])[0]; I3
             {1}
-            sage: I3.scan_right_endpoint()
+            sage: I3._scan_right_endpoint()
             ((1, 1), 1, None)
             sage: I4 = RealSet((0,oo))[0]; I4
             (0, +oo)
-            sage: I4.scan_right_endpoint()
+            sage: I4._scan_right_endpoint()
             ((+Infinity, 0), 1, None)
         """
         if self._upper_closed:
@@ -1554,9 +1554,9 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         """
         scan = []
         for index, interval in enumerate(intervals):
-            scan.append([interval.scan_left_endpoint()])
-            scan.append([interval.scan_right_endpoint()])
-        union = RealSet.scan_line_union(scan)
+            scan.append([interval._scan_left_endpoint()])
+            scan.append([interval._scan_right_endpoint()])
+        union = RealSet._scan_line_union(scan)
         return tuple(union)
 
     def _repr_(self):
@@ -1958,8 +1958,8 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         """
         return RealSet(InternalRealInterval(RLF(minus_infinity), False, RLF(infinity), False), **kwds)
 
-    def scan_left_endpoint(self, tag=None):
-        r""" Generate events for scan line methods
+    def _scan_left_endpoint(self, tag=None):
+        r""" Generate events for scan-line method
 
          INPUT:
 
@@ -1972,17 +1972,17 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         EXAMPLES::
         sage: s = RealSet((-oo,0), RealSet.closed_open(1,2), (2, 3), [4, 4]); s
         (-oo, 0) ∪ [1, 2) ∪ (2, 3) ∪ {4}
-        sage: list(s.scan_left_endpoint())
+        sage: list(s._scan_left_endpoint())
         [((-Infinity, 1), -1, None),
         ((1, 0), -1, None),
         ((2, 1), -1, None),
         ((4, 0), -1, None)]
         """
         for i in self._intervals:
-            yield i.scan_left_endpoint(tag)
+            yield i._scan_left_endpoint(tag)
 
-    def scan_right_endpoint(self, tag=None):
-        r""" Generate events for scan line methods
+    def _scan_right_endpoint(self, tag=None):
+        r""" Generate events for scan-line method
 
          INPUT:
 
@@ -1995,18 +1995,18 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         EXAMPLES::
         sage: s = RealSet(RealSet.open_closed(0,1), (2, 3), [4, 4],(5, oo)); s
         (0, 1] ∪ (2, 3) ∪ {4} ∪ (5, +oo)
-        sage: list(s.scan_right_endpoint())
+        sage: list(s._scan_right_endpoint())
         [((1, 1), 1, None),
         ((3, 0), 1, None),
         ((4, 1), 1, None),
         ((+Infinity, 0), 1, None)]
         """
         for i in self._intervals:
-            yield i.scan_right_endpoint(tag)
+            yield i._scan_right_endpoint(tag)
 
-    def scan_interval(self, tag=None):
+    def _scan_interval(self, tag=None):
         r"""
-        Generate events for scan line methods
+        Generate events for scan-line method
 
          INPUT:
 
@@ -2022,7 +2022,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         EXAMPLES::
             sage: s = RealSet((-oo,0),RealSet.open_closed(0,1),(2, 3),[4, 5], [5,5], (6,oo)); s
             (-oo, 0) ∪ (0, 1] ∪ (2, 3) ∪ [4, 5] ∪ (6, +oo)
-            sage: list(RealSet.scan_interval(s))
+            sage: list(RealSet._scan_interval(s))
             [((-Infinity, 1), -1, None),
             ((0, 0), 1, None),
             ((0, 1), -1, None),
@@ -2035,7 +2035,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             ((+Infinity, 0), 1, None)]
 
         """
-        return merge(self.scan_left_endpoint(tag), self.scan_right_endpoint(tag))
+        return merge(self._scan_left_endpoint(tag), self._scan_right_endpoint(tag))
 
     @staticmethod
     def intersection_of_realsets(realsets):
@@ -2078,7 +2078,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         scan = []
         intersection = []
         for index, real_set in enumerate(realsets):
-            scan.append(real_set.scan_interval(tag=index))
+            scan.append(real_set._scan_interval(tag=index))
         scan = merge(*scan)
         interval_indicators = [0 for _ in realsets]
         (on_x, on_epsilon) = (None, None)
@@ -2127,7 +2127,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
 
     # -----------------------------------------------------------
     @staticmethod
-    def scan_line_union(scan):
+    def _scan_line_union(scan):
         """
         Helper function for union of :class:`RealSet` and constructor
         """
@@ -2190,8 +2190,8 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
 
         scan = []
         for real_set in realsets:
-            scan.append(real_set.scan_interval())
-        union = real_set.scan_line_union(scan)
+            scan.append(real_set._scan_interval())
+        union = real_set._scan_line_union(scan)
         return RealSet(*union)
 
     def union(self, *other):
@@ -2387,8 +2387,8 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
 
     def scan_difference(self, *other):
         remove_lists = RealSet(*other)
-        scan = merge(self.scan_interval(True),
-                     remove_lists.scan_interval(False))
+        scan = merge(self._scan_interval(True),
+                     remove_lists._scan_interval(False))
         interval_indicator = 0
         remove_indicator = 0
         on = False
@@ -2405,7 +2405,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             elif was_on and not now_on:
                 scan_res.append([((x, epsilon), +1, None)])
             on = now_on
-        res = RealSet.scan_line_union(scan_res)
+        res = RealSet._scan_line_union(scan_res)
         return RealSet(*res)
 
     def symmetric_difference(self, *other):
@@ -2654,7 +2654,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         """
         scan = []
         for real_set in realsets:
-            scan.append(real_set.scan_interval())
+            scan.append(real_set._scan_interval())
         scan = list(merge(*scan))
         (x1, epsilon1) = scan[0][0]
         (x2, epsilon2) = scan[-1][0]
@@ -2712,14 +2712,14 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             sage: s4 = s4 = RealSet([1, -1/2])
             sage: RealSet.are_pairwise_disjoint([s1, s2, s3])
             True
-            sage: sage: RealSet.are_pairwise_disjoint([s1, s2, s3, RealSet.point(10)])
+            sage: RealSet.are_pairwise_disjoint([s1, s2, s3, RealSet.point(10)])
             True
             sage: RealSet.are_pairwise_disjoint([s1, s2, s3, s4])
             False
         """
         scan = []
         for real_set in realsets:
-            scan.append(real_set.scan_interval())
+            scan.append(real_set._scan_interval())
         scan = merge(*scan)
         interval_indicator = 0
         (on_x, on_epsilon) = (None, None)
