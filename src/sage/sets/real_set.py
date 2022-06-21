@@ -2487,7 +2487,31 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             sage: J.is_subset(K)
             False
         """
-        return RealSet(*other).intersection(self) == self
+        other = RealSet(*other)
+        scan = []
+        intersection = []
+        realsets = [self, other]
+        for index, real_set in enumerate(realsets):
+            scan.append(real_set._scan_interval(tag=index))
+        scan = merge(*scan)
+        interval_indicators = [0 for _ in realsets]
+        (on_x, on_epsilon) = (None, None)
+        for (x, epsilon), delta, index in scan:
+            was_on = all(on > 0 for on in interval_indicators)
+            interval_indicators[index] -= delta
+            assert interval_indicators[index] >= 0
+            now_on = all(on > 0 for on in interval_indicators)
+            if was_on:
+                if (on_x, on_epsilon) < (x, epsilon):
+                    intersection.append(InternalRealInterval(on_x, on_epsilon == 0, x, epsilon > 0))
+            if now_on:
+                (on_x, on_epsilon) = (x, epsilon)
+            else:
+                (on_x, on_epsilon) = (None, None)
+        return RealSet(*intersection) == self
+
+        # return RealSet(*other).intersection(self) == self
+        
 
     is_included_in = deprecated_function_alias(31927, is_subset)
 
