@@ -2039,11 +2039,12 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
 
     @staticmethod
     def intersection_of_realsets(realsets):
-        """Compute the intersection of a list of :class:`RealSet`.
+        """
+        Compute the intersection of a list of :class:`RealSet`.
 
         INPUT:
 
-        - ``realsets`` -- a list/tuple/iterable of :class:`RealSet`.
+        - ``realsets`` -- a list :class:`RealSet`.
 
         OUTPUT:
 
@@ -2130,14 +2131,6 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
     def _scan_line_union(scan):
         """
         Helper function for union of :class:`RealSet` and constructor
-
-          INPUT:
-
-        - ``scan`` -- a list scan results from union or constructor.
-
-        OUTPUT:
-
-        The set-theoretic union as a new list of interval.
         """
         union = []
         scan = merge(*scan)
@@ -2161,40 +2154,42 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
 
     @staticmethod
     def union_of_realsets(realsets):
-        """Compute the union of real set lists.
+        """
+        Compute the union of a list real :class:`RealSet`.
 
-       INPUT:
+        INPUT:
 
-       - ``interval_lists`` -- a list/tuple/iterable of RealSet
+        - ``realsets`` -- a list :class:`RealSet`
 
-       OUTPUT:
+        OUTPUT:
 
-       The set-theoretic union as a new :class:`RealSet`.
+        The set-theoretic union as a new :class:`RealSet`.
 
-       EXAMPLES::
-           sage: s1 = RealSet([1, 2], (2, 3)); s1
-           [1, 3)
-           sage: s2 = RealSet([-1, -1]); s2
-           {-1}
-           sage: s3 = RealSet(3, oo); s3
-           (3, +oo)
-           sage: s4 = RealSet(RealSet.closed_open(3, 5), (1, 2)); s4
-           (1, 2) ∪ [3, 5)
-           sage: s5 = RealSet(0,0); s5
-           {}
-           sage: RealSet.union_of_realsets([s1, s2])
-           {-1} ∪ [1, 3)
-           sage: RealSet.union_of_realsets([s1, s3])
-           [1, 3) ∪ (3, +oo)
-           sage: RealSet.union_of_realsets([s1, s2, s3])
-           {-1} ∪ [1, 3) ∪ (3, +oo)
-           sage: RealSet.union_of_realsets([s1, s2, s4])
-           {-1} ∪ [1, 5)
-           sage: RealSet.union_of_realsets([s1, s2, s3, s4])
-           {-1} ∪ [1, +oo)
-           sage: RealSet.union_of_realsets([s1, s2, s3, s4, s5])
-           {-1} ∪ [1, +oo)
-               """
+        EXAMPLES::
+
+            sage: s1 = RealSet([1, 2], (2, 3)); s1
+            [1, 3)
+            sage: s2 = RealSet([-1, -1]); s2
+            {-1}
+            sage: s3 = RealSet(3, oo); s3
+            (3, +oo)
+            sage: s4 = RealSet(RealSet.closed_open(3, 5), (1, 2)); s4
+            (1, 2) ∪ [3, 5)
+            sage: s5 = RealSet(0,0); s5
+            {}
+            sage: RealSet.union_of_realsets([s1, s2])
+            {-1} ∪ [1, 3)
+            sage: RealSet.union_of_realsets([s1, s3])
+            [1, 3) ∪ (3, +oo)
+            sage: RealSet.union_of_realsets([s1, s2, s3])
+            {-1} ∪ [1, 3) ∪ (3, +oo)
+            sage: RealSet.union_of_realsets([s1, s2, s4])
+            {-1} ∪ [1, 5)
+            sage: RealSet.union_of_realsets([s1, s2, s3, s4])
+            {-1} ∪ [1, +oo)
+            sage: RealSet.union_of_realsets([s1, s2, s3, s4, s5])
+            {-1} ∪ [1, +oo)
+        """
 
         scan = []
         for real_set in realsets:
@@ -2557,9 +2552,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             else:
                 (on_x, on_epsilon) = (None, None)
         return RealSet(*intersection) == self
-
         # return RealSet(*other).intersection(self) == self
-
 
     is_included_in = deprecated_function_alias(31927, is_subset)
 
@@ -2695,7 +2688,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
 
         INPUT:
 
-        - ``realsets`` -- a list/tuple/iterable of :class:`RealSet`.
+        - ``realsets`` -- a list of :class:`RealSet`.
 
         OUTPUT:
 
@@ -2709,7 +2702,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             (-oo, -10] ∪ (1, 3)
             sage: s3 = RealSet((0,2),RealSet.point(8)); s3
             (0, 2) ∪ {8}
-            sage: s4 = RealSet.(0,0); s4
+            sage: s4 = RealSet(0,0); s4
             {}
             sage: RealSet.convex_hull([s1])
             (0, +oo)
@@ -2733,6 +2726,36 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         left_close = True if epsilon1 == 0 else False
         right_close = False if epsilon2 == 0 else True
         return InternalRealInterval(x1, left_close, x2, right_close)
+
+    def is_connected(self):
+        """
+        Return whether :class:`RealSet` is a connected set.
+
+        OUTPUT:
+
+        Boolean. Whether the set-theoretic real
+        has a single connected component.
+
+        EXAMPLES::
+
+            sage: s1 = RealSet((1, 2), (2, 4));  s1
+            (1, 2) ∪ (2, 4)
+            sage: s2 = RealSet((1, 2), (2, 4), RealSet.point(2));  s2
+            (1, 4)
+            sage: s3 = RealSet(1,3) + RealSet.unbounded_below_closed(-10);  s3
+            (-oo, -10] ∪ (1, 3)
+            sage: s4 = RealSet(-oo, oo); s4
+            (-oo, +oo)
+            sage: s1.is_connected()
+            False
+            sage: s2.is_connected()
+            True
+            sage: s3.is_connected()
+            False
+            sage: s4.is_connected()
+            True
+        """
+        return True if len(list(self)) == 1 else False
 
     def is_disjoint(self, *other):
         """
@@ -2762,36 +2785,6 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
 
     is_disjoint_from = deprecated_function_alias(31927, is_disjoint)
 
-    def is_connected(self):
-        """
-        Return whether :class:`RealSet` is a connected set.
-
-        OUTPUT:
-
-        Boolean. Whether the set-theoretic real
-        has a single connected component.
-
-        EXAMPLES::
-
-            sage: s1 = RealSet((1, 2), (2, 4));  s1
-            (0, 1) ∪ (2, 3)
-            sage: s2 = RealSet((1, 2), (2, 4), RealSet.point(2));  s2
-            (1, 4)
-            sage: s3 = RealSet(1,3) + RealSet.unbounded_below_closed(-10);  s3
-            (-oo, -10] ∪ (1, 3)
-            sage: s4 = RealSet((-oo, oo)), s3
-            (-oo, oo)
-            sage: s1.is_connected()
-            False
-            sage: s2.is_connected()
-            True
-            sage: s3.is_connected()
-            False
-            sage: s4.is_connected()
-            True
-            """
-        return True if len(list(self)) == 1 else False
-
     @staticmethod
     def are_pairwise_disjoint(realsets):
         """
@@ -2799,7 +2792,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
 
         INPUT:
 
-        - ``*real_set_collection`` -- a list/tuple/iterable of
+        - ``realsets`` -- a list of
           :class:`RealSet`.
 
         OUTPUT:
