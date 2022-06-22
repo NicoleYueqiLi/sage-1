@@ -2039,11 +2039,11 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
 
     @staticmethod
     def intersection_of_realsets(realsets):
-        """Compute the intersection of the union of intervals.
+        """Compute the intersection of a list of :class:`RealSet`.
 
         INPUT:
 
-        - ``interval_lists`` -- a list/tuple/iterable of #TODO.
+        - ``realsets`` -- a list/tuple/iterable of :class:`RealSet`.
 
         OUTPUT:
 
@@ -2130,6 +2130,14 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
     def _scan_line_union(scan):
         """
         Helper function for union of :class:`RealSet` and constructor
+
+          INPUT:
+
+        - ``scan`` -- a list scan results from union or constructor.
+
+        OUTPUT:
+
+        The set-theoretic union as a new list of interval.
         """
         union = []
         scan = merge(*scan)
@@ -2155,37 +2163,37 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
     def union_of_realsets(realsets):
         """Compute the union of real set lists.
 
-               INPUT:
+       INPUT:
 
-               - ``interval_lists`` -- a list/tuple/iterable of RealSet
+       - ``interval_lists`` -- a list/tuple/iterable of RealSet
 
-               OUTPUT:
+       OUTPUT:
 
-               The set-theoretic union as a new :class:`RealSet`.
+       The set-theoretic union as a new :class:`RealSet`.
 
-               EXAMPLES::
-                   sage: s1 = RealSet([1, 2], (2, 3)); s1
-                   [1, 3)
-                   sage: s2 = RealSet([-1, -1]); s2
-                   {-1}
-                   sage: s3 = RealSet(3, oo); s3
-                   (3, +oo)
-                   sage: s4 = RealSet(RealSet.closed_open(3, 5), (1, 2)); s4
-                   (1, 2) ∪ [3, 5)
-                   sage: s5 = RealSet(0,0); s5
-                   {}
-                   sage: RealSet.union_of_realsets([s1, s2])
-                   {-1} ∪ [1, 3)
-                   sage: RealSet.union_of_realsets([s1, s3])
-                   [1, 3) ∪ (3, +oo)
-                   sage: RealSet.union_of_realsets([s1, s2, s3])
-                   {-1} ∪ [1, 3) ∪ (3, +oo)
-                   sage: RealSet.union_of_realsets([s1, s2, s4])
-                   {-1} ∪ [1, 5)
-                   sage: RealSet.union_of_realsets([s1, s2, s3, s4])
-                   {-1} ∪ [1, +oo)
-                   sage: RealSet.union_of_realsets([s1, s2, s3, s4, s5])
-                   {-1} ∪ [1, +oo)
+       EXAMPLES::
+           sage: s1 = RealSet([1, 2], (2, 3)); s1
+           [1, 3)
+           sage: s2 = RealSet([-1, -1]); s2
+           {-1}
+           sage: s3 = RealSet(3, oo); s3
+           (3, +oo)
+           sage: s4 = RealSet(RealSet.closed_open(3, 5), (1, 2)); s4
+           (1, 2) ∪ [3, 5)
+           sage: s5 = RealSet(0,0); s5
+           {}
+           sage: RealSet.union_of_realsets([s1, s2])
+           {-1} ∪ [1, 3)
+           sage: RealSet.union_of_realsets([s1, s3])
+           [1, 3) ∪ (3, +oo)
+           sage: RealSet.union_of_realsets([s1, s2, s3])
+           {-1} ∪ [1, 3) ∪ (3, +oo)
+           sage: RealSet.union_of_realsets([s1, s2, s4])
+           {-1} ∪ [1, 5)
+           sage: RealSet.union_of_realsets([s1, s2, s3, s4])
+           {-1} ∪ [1, +oo)
+           sage: RealSet.union_of_realsets([s1, s2, s3, s4, s5])
+           {-1} ∪ [1, +oo)
                """
 
         scan = []
@@ -2430,6 +2438,46 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             sage: s1.symmetric_difference(s2)
             (0, 1] ∪ [2, +oo)
         """
+        # remove_lists = RealSet(*other)
+        # scan = merge(self._scan_interval(True),
+        #              remove_lists._scan_interval(False))
+        # interval_indicator = 0
+        # remove_indicator = 0
+        # on = False
+        # scan_res = []
+        # for ((x, epsilon), delta, tag) in scan:
+        #     was_on = on
+        #     if tag:
+        #         interval_indicator -= delta
+        #     else:
+        #         remove_indicator -= delta
+        #     now_on = interval_indicator > 0 and remove_indicator == 0
+        #     if not was_on and now_on:
+        #         scan_res.append([((x, epsilon), -1, None)])
+        #     elif was_on and not now_on:
+        #         scan_res.append([((x, epsilon), +1, None)])
+        #     on = now_on
+        # res_1 = RealSet._scan_line_union(scan_res)
+        # scan_2 = merge(self._scan_interval(False),
+        #              remove_lists._scan_interval(True))
+        # interval_indicator = 0
+        # remove_indicator = 0
+        # on = False
+        # scan_res = []
+        # for ((x, epsilon), delta, tag) in scan_2:
+        #     was_on = on
+        #     if tag:
+        #         interval_indicator -= delta
+        #     else:
+        #         remove_indicator -= delta
+        #     now_on = interval_indicator > 0 and remove_indicator == 0
+        #     if not was_on and now_on:
+        #         scan_res.append([((x, epsilon), -1, None)])
+        #     elif was_on and not now_on:
+        #         scan_res.append([((x, epsilon), +1, None)])
+        #     on = now_on
+        # res_2 = RealSet._scan_line_union(scan_res)
+        # return RealSet(res_1, res_2)
         other = RealSet(*other)
         return self.difference(other).union(other.difference(self))
 
