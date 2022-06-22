@@ -2511,7 +2511,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         return RealSet(*intersection) == self
 
         # return RealSet(*other).intersection(self) == self
-        
+
 
     is_included_in = deprecated_function_alias(31927, is_subset)
 
@@ -2713,6 +2713,36 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         return self.are_pairwise_disjoint([self, other])
 
     is_disjoint_from = deprecated_function_alias(31927, is_disjoint)
+
+    def is_connected(self):
+        """
+        Return whether :class:`RealSet` is a connected set.
+
+        OUTPUT:
+
+        Boolean. Whether the set-theoretic real
+        has a single connected component.
+
+        EXAMPLES::
+
+            sage: s1 = RealSet((1, 2), (2, 4));  s1
+            (0, 1) ∪ (2, 3)
+            sage: s2 = RealSet((1, 2), (2, 4), RealSet.point(2));  s2
+            (1, 4)
+            sage: s3 = RealSet(1,3) + RealSet.unbounded_below_closed(-10);  s3
+            (-oo, -10] ∪ (1, 3)
+            sage: s4 = RealSet((-oo, oo)), s3
+            (-oo, oo)
+            sage: s1.is_connected()
+            False
+            sage: s2.is_connected()
+            True
+            sage: s3.is_connected()
+            False
+            sage: s4.is_connected()
+            True
+            """
+        return True if len(list(self)) == 1 else False
 
     @staticmethod
     def are_pairwise_disjoint(realsets):
