@@ -2076,7 +2076,6 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             sage: RealSet.intersection_of_realsets([s1, s2, s4])
             (1, 2)
         """
-
         scan = []
         for index, real_set in enumerate(realsets):
             scan.append(real_set._scan_interval(tag=index))
@@ -2354,6 +2353,31 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             intervals.append(i)
         return RealSet(*intervals)
 
+    @staticmethod
+    def _scan_line_difference(scan):
+        """
+        Helper function for difference
+        """
+        interval_indicator = 0
+        remove_indicator = 0
+        on = False
+        scan_res = []
+        for ((x, epsilon), delta, tag) in scan:
+            was_on = on
+            if tag:
+                interval_indicator -= delta
+            else:
+                remove_indicator -= delta
+            now_on = interval_indicator > 0 and remove_indicator == 0
+            if not was_on and now_on:
+                scan_res.append([((x, epsilon), -1, None)])
+            elif was_on and not now_on:
+                scan_res.append([((x, epsilon), +1, None)])
+            on = now_on
+        scan_res = merge(*scan_res)
+        res = RealSet._scan_line_union(scan_res)
+        return res
+
     def difference(self, *other):
         """
         Return ``self`` with ``other`` subtracted
@@ -2387,25 +2411,32 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         remove_lists = RealSet(*other)
         scan = merge(self._scan_interval(True),
                      remove_lists._scan_interval(False))
-        interval_indicator = 0
-        remove_indicator = 0
-        on = False
-        scan_res = []
-        for ((x, epsilon), delta, tag) in scan:
-            was_on = on
-            if tag:
-                interval_indicator -= delta
-            else:
-                remove_indicator -= delta
-            now_on = interval_indicator > 0 and remove_indicator == 0
-            if not was_on and now_on:
-                scan_res.append([((x, epsilon), -1, None)])
-            elif was_on and not now_on:
-                scan_res.append([((x, epsilon), +1, None)])
-            on = now_on
-        scan_res = merge(*scan_res)
-        res = RealSet._scan_line_union(scan_res)
+        res = self._scan_line_difference(scan)
         return RealSet(*res)
+
+    @staticmethod
+    def _scan_line_symmetric_difference(scan):
+        """
+        Helper function for symmetric_difference
+        """
+        symmetric_difference = []
+        interval_indicator = 0
+        (on_x, on_epsilon) = (None, None)
+        was_on = False
+        for (x, epsilon), delta, index in scan:
+            interval_indicator -= delta
+            now_on = (interval_indicator == 1)
+            if not was_on and not now_on:
+                (on_x, on_epsilon) = (None, None)
+            elif was_on and not now_on:
+                if (x == infinity or x == minus_infinity) and x == on_x:
+                    return symmetric_difference
+                symmetric_difference.append(InternalRealInterval(on_x, on_epsilon == 0, x, epsilon > 0))
+                (on_x, on_epsilon) = (None, None)
+            elif not was_on and now_on:
+                (on_x, on_epsilon) = (x, epsilon)
+            was_on = now_on
+        return symmetric_difference
 
     def symmetric_difference(self, *other):
         r"""
@@ -2429,28 +2460,11 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             sage: s1.symmetric_difference(s2)
             (0, 1] ∪ [2, +oo)
         """
-        symmetric_difference = []
+
         other = RealSet(*other)
         scan = merge(self._scan_interval(True),
                      other._scan_interval(False))
-        interval_indicator = 0
-        (on_x, on_epsilon) = (None, None)
-        was_on = False
-        for (x, epsilon), delta, index in scan:
-            interval_indicator -= delta
-            now_on = (interval_indicator == 1)
-            if not was_on and not now_on:
-                (on_x, on_epsilon) = (None, None)
-            elif was_on and not now_on:
-                if (x == infinity or x == minus_infinity) and x == on_x:
-                    return symmetric_difference
-                symmetric_difference.append(InternalRealInterval(on_x, on_epsilon == 0, x, epsilon > 0))
-                (on_x, on_epsilon) = (None, None)
-            elif not was_on and now_on:
-                (on_x, on_epsilon) = (x, epsilon)
-            was_on = now_on
-
-        # other = RealSet(*other)
+        symmetric_difference = self._scan_line_symmetric_difference(scan)
         return RealSet(*symmetric_difference)
 
     def contains(self, x):
@@ -2507,29 +2521,29 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             sage: J.is_subset(K)
             False
         """
-        other = RealSet(*other)
-        scan = []
-        intersection = []
-        realsets = [self, other]
-        for index, real_set in enumerate(realsets):
-            scan.append(real_set._scan_interval(tag=index))
-        scan = merge(*scan)
-        interval_indicators = [0 for _ in realsets]
-        (on_x, on_epsilon) = (None, None)
-        for (x, epsilon), delta, index in scan:
-            was_on = all(on > 0 for on in interval_indicators)
-            interval_indicators[index] -= delta
-            assert interval_indicators[index] >= 0
-            now_on = all(on > 0 for on in interval_indicators)
-            if was_on:
-                if (on_x, on_epsilon) < (x, epsilon):
-                    intersection.append(InternalRealInterval(on_x, on_epsilon == 0, x, epsilon > 0))
-            if now_on:
-                (on_x, on_epsilon) = (x, epsilon)
-            else:
-                (on_x, on_epsilon) = (None, None)
-        return RealSet(*intersection) == self
-        # return RealSet(*other).intersection(self) == self
+        # other = RealSet(*other)
+        # scan = []
+        # intersection = []
+        # realsets = [self, other]
+        # for index, real_set in enumerate(realsets):
+        #     scan.append(real_set._scan_interval(tag=index))
+        # scan = merge(*scan)
+        # interval_indicators = [0 for _ in realsets]
+        # (on_x, on_epsilon) = (None, None)
+        # for (x, epsilon), delta, index in scan:
+        #     was_on = all(on > 0 for on in interval_indicators)
+        #     interval_indicators[index] -= delta
+        #     assert interval_indicators[index] >= 0
+        #     now_on = all(on > 0 for on in interval_indicators)
+        #     if was_on:
+        #         if (on_x, on_epsilon) < (x, epsilon):
+        #             intersection.append(InternalRealInterval(on_x, on_epsilon == 0, x, epsilon > 0))
+        #     if now_on:
+        #         (on_x, on_epsilon) = (x, epsilon)
+        #     else:
+        #         (on_x, on_epsilon) = (None, None)
+        # return RealSet(*intersection) == self
+        return RealSet(*other).intersection(self) == self
 
     is_included_in = deprecated_function_alias(31927, is_subset)
 
