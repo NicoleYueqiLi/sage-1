@@ -1556,6 +1556,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         for index, interval in enumerate(intervals):
             scan.append([interval._scan_left_endpoint()])
             scan.append([interval._scan_right_endpoint()])
+        scan = merge(*scan)
         union = RealSet._scan_line_union(scan)
         return tuple(union)
 
@@ -2040,11 +2041,11 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
     @staticmethod
     def intersection_of_realsets(realsets):
         """
-        Compute the intersection of a list of :class:`RealSet`.
+        Compute the intersection of a list/tuple/iterable of :class:`RealSet`.
 
         INPUT:
 
-        - ``realsets`` -- a list :class:`RealSet`.
+        - ``realsets`` -- a list/tuple/iterable :class:`RealSet`.
 
         OUTPUT:
 
@@ -2077,16 +2078,15 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         """
 
         scan = []
-        intersection = []
         for index, real_set in enumerate(realsets):
             scan.append(real_set._scan_interval(tag=index))
         scan = merge(*scan)
+        intersection = []
         interval_indicators = [0 for _ in realsets]
         (on_x, on_epsilon) = (None, None)
         for (x, epsilon), delta, index in scan:
             was_on = all(on > 0 for on in interval_indicators)
             interval_indicators[index] -= delta
-            assert interval_indicators[index] >= 0
             now_on = all(on > 0 for on in interval_indicators)
             if was_on:
                 if (on_x, on_epsilon) < (x, epsilon):
@@ -2095,7 +2095,6 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
                 (on_x, on_epsilon) = (x, epsilon)
             else:
                 (on_x, on_epsilon) = (None, None)
-        assert all(on == 0 for on in interval_indicators)  # no unbounded intervals
         return RealSet(*intersection)
 
     # -------------------Test-------------------------------------
@@ -2133,7 +2132,6 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         Helper function for union of :class:`RealSet` and constructor
         """
         union = []
-        scan = merge(*scan)
         interval_indicator = 0
         (on_x, on_epsilon) = (None, None)
         was_on = False
@@ -2155,11 +2153,11 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
     @staticmethod
     def union_of_realsets(realsets):
         """
-        Compute the union of a list real :class:`RealSet`.
+        Compute the union of a list/tuple/iterable :class:`RealSet`.
 
         INPUT:
 
-        - ``realsets`` -- a list :class:`RealSet`
+        - ``realsets`` -- a list/tuple/iterable :class:`RealSet`
 
         OUTPUT:
 
@@ -2194,6 +2192,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         scan = []
         for real_set in realsets:
             scan.append(real_set._scan_interval())
+        scan = merge(*scan)
         union = real_set._scan_line_union(scan)
         return RealSet(*union)
 
@@ -2385,10 +2384,6 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             sage: s1.difference(1,11)
             (0, 1] ∪ [11, +oo)
         """
-        other = RealSet(*other)
-        return self.intersection(other.complement())
-
-    def scan_difference(self, *other):
         remove_lists = RealSet(*other)
         scan = merge(self._scan_interval(True),
                      remove_lists._scan_interval(False))
@@ -2408,6 +2403,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             elif was_on and not now_on:
                 scan_res.append([((x, epsilon), +1, None)])
             on = now_on
+        scan_res = merge(*scan_res)
         res = RealSet._scan_line_union(scan_res)
         return RealSet(*res)
 
@@ -2433,48 +2429,29 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             sage: s1.symmetric_difference(s2)
             (0, 1] ∪ [2, +oo)
         """
-        # remove_lists = RealSet(*other)
-        # scan = merge(self._scan_interval(True),
-        #              remove_lists._scan_interval(False))
-        # interval_indicator = 0
-        # remove_indicator = 0
-        # on = False
-        # scan_res = []
-        # for ((x, epsilon), delta, tag) in scan:
-        #     was_on = on
-        #     if tag:
-        #         interval_indicator -= delta
-        #     else:
-        #         remove_indicator -= delta
-        #     now_on = interval_indicator > 0 and remove_indicator == 0
-        #     if not was_on and now_on:
-        #         scan_res.append([((x, epsilon), -1, None)])
-        #     elif was_on and not now_on:
-        #         scan_res.append([((x, epsilon), +1, None)])
-        #     on = now_on
-        # res_1 = RealSet._scan_line_union(scan_res)
-        # scan_2 = merge(self._scan_interval(False),
-        #              remove_lists._scan_interval(True))
-        # interval_indicator = 0
-        # remove_indicator = 0
-        # on = False
-        # scan_res = []
-        # for ((x, epsilon), delta, tag) in scan_2:
-        #     was_on = on
-        #     if tag:
-        #         interval_indicator -= delta
-        #     else:
-        #         remove_indicator -= delta
-        #     now_on = interval_indicator > 0 and remove_indicator == 0
-        #     if not was_on and now_on:
-        #         scan_res.append([((x, epsilon), -1, None)])
-        #     elif was_on and not now_on:
-        #         scan_res.append([((x, epsilon), +1, None)])
-        #     on = now_on
-        # res_2 = RealSet._scan_line_union(scan_res)
-        # return RealSet(res_1, res_2)
+        symmetric_difference = []
         other = RealSet(*other)
-        return self.difference(other).union(other.difference(self))
+        scan = merge(self._scan_interval(True),
+                     other._scan_interval(False))
+        interval_indicator = 0
+        (on_x, on_epsilon) = (None, None)
+        was_on = False
+        for (x, epsilon), delta, index in scan:
+            interval_indicator -= delta
+            now_on = (interval_indicator == 1)
+            if not was_on and not now_on:
+                (on_x, on_epsilon) = (None, None)
+            elif was_on and not now_on:
+                if (x == infinity or x == minus_infinity) and x == on_x:
+                    return symmetric_difference
+                symmetric_difference.append(InternalRealInterval(on_x, on_epsilon == 0, x, epsilon > 0))
+                (on_x, on_epsilon) = (None, None)
+            elif not was_on and now_on:
+                (on_x, on_epsilon) = (x, epsilon)
+            was_on = now_on
+
+        # other = RealSet(*other)
+        return RealSet(*symmetric_difference)
 
     def contains(self, x):
         """
@@ -2684,11 +2661,11 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
     @staticmethod
     def convex_hull(realsets):
         """
-        Return the convex hull of a list of :class:`RealInterval`
+        Return the convex hull of a list/tuple/iterable of :class:`RealInterval`
 
         INPUT:
 
-        - ``realsets`` -- a list of :class:`RealSet`.
+        - ``realsets`` -- a list/tuple/iterable of :class:`RealSet`.
 
         OUTPUT:
 
@@ -2792,7 +2769,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
 
         INPUT:
 
-        - ``realsets`` -- a list of
+        - ``realsets`` -- a list/tuple/iterable of
           :class:`RealSet`.
 
         OUTPUT:
