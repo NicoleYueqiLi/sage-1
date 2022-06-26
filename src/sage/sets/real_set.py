@@ -2038,64 +2038,6 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         """
         return merge(self._scan_left_endpoint(tag), self._scan_right_endpoint(tag))
 
-    @staticmethod
-    def intersection_of_realsets(realsets):
-        """
-        Compute the intersection of a list/tuple/iterable of :class:`RealSet`.
-
-        INPUT:
-
-        - ``realsets`` -- a list/tuple/iterable :class:`RealSet`.
-
-        OUTPUT:
-
-        The set-theoretic union as a new :class:`RealSet`.
-
-        EXAMPLES::
-
-            sage: s1 = RealSet(0,2) + RealSet.unbounded_above_closed(10);  s1
-            (0, 2) ∪ [10, +oo)
-            sage: s2 = RealSet(1,3) + RealSet.unbounded_below_closed(-10);  s2
-            (-oo, -10] ∪ (1, 3)
-            sage: s3 = RealSet([1, 1]); s3
-            {1}
-            sage: s4 = RealSet(RealSet.open_closed(0, 2), RealSet.closed_open(-11, -1), RealSet.open_closed(5,10)); s4
-            [-11, -1) ∪ (0, 2] ∪ (5, 10]
-            sage: RealSet.intersection_of_realsets([s1, s2])
-            (1, 2)
-            sage: RealSet.intersection_of_realsets([s1, s3])
-            {1}
-            sage: RealSet.intersection_of_realsets([s2, s3])
-            {}
-            sage: RealSet.intersection_of_realsets([s1, s2, s3])
-            {}
-            sage: RealSet.intersection_of_realsets([s1, s4])
-            (0, 2) ∪ {10}
-            sage: RealSet.intersection_of_realsets([s2, s4])
-            [-11, -10] ∪ (1, 2]
-            sage: RealSet.intersection_of_realsets([s1, s2, s4])
-            (1, 2)
-        """
-        scan = []
-        for index, real_set in enumerate(realsets):
-            scan.append(real_set._scan_interval(tag=index))
-        scan = merge(*scan)
-        intersection = []
-        interval_indicators = [0 for _ in realsets]
-        (on_x, on_epsilon) = (None, None)
-        for (x, epsilon), delta, index in scan:
-            was_on = all(on > 0 for on in interval_indicators)
-            interval_indicators[index] -= delta
-            now_on = all(on > 0 for on in interval_indicators)
-            if was_on:
-                if (on_x, on_epsilon) < (x, epsilon):
-                    intersection.append(InternalRealInterval(on_x, on_epsilon == 0, x, epsilon > 0))
-            if now_on:
-                (on_x, on_epsilon) = (x, epsilon)
-            else:
-                (on_x, on_epsilon) = (None, None)
-        return RealSet(*intersection)
-
     # -------------------Test-------------------------------------
 
     @staticmethod
@@ -2192,7 +2134,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         for real_set in realsets:
             scan.append(real_set._scan_interval())
         scan = merge(*scan)
-        union = real_set._scan_line_union(scan)
+        union = RealSet._scan_line_union(scan)
         return RealSet(*union)
 
     def union(self, *other):
@@ -2222,6 +2164,78 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         """
         other = RealSet(*other)
         return RealSet.union_of_realsets([self, other])
+
+    @staticmethod
+    def _scan_line_intersection(scan, n):
+        """
+        Helper function for intersection of :class:`RealSet`
+        """
+        intersection = []
+        interval_indicator = 0
+        (on_x, on_epsilon) = (None, None)
+        was_on = False
+        for (x, epsilon), delta, index in scan:
+            interval_indicator -= delta
+            now_on = (interval_indicator == n)
+            if not was_on and not now_on:
+                (on_x, on_epsilon) = (None, None)
+            elif was_on and not now_on:
+                if (x == infinity or x == minus_infinity) and x == on_x:
+                    return intersection
+                if (on_x, on_epsilon) < (x, epsilon):
+                    intersection.append(InternalRealInterval(on_x, on_epsilon == 0, x, epsilon > 0))
+                (on_x, on_epsilon) = (None, None)
+            elif not was_on and now_on:
+                (on_x, on_epsilon) = (x, epsilon)
+            was_on = now_on
+        return intersection
+
+
+    @staticmethod
+    def intersection_of_realsets(realsets):
+        """
+        Compute the intersection of a list/tuple/iterable of :class:`RealSet`.
+
+        INPUT:
+
+        - ``realsets`` -- a list/tuple/iterable :class:`RealSet`.
+
+        OUTPUT:
+
+        The set-theoretic union as a new :class:`RealSet`.
+
+        EXAMPLES::
+
+            sage: s1 = RealSet(0,2) + RealSet.unbounded_above_closed(10);  s1
+            (0, 2) ∪ [10, +oo)
+            sage: s2 = RealSet(1,3) + RealSet.unbounded_below_closed(-10);  s2
+            (-oo, -10] ∪ (1, 3)
+            sage: s3 = RealSet([1, 1]); s3
+            {1}
+            sage: s4 = RealSet(RealSet.open_closed(0, 2), RealSet.closed_open(-11, -1), RealSet.open_closed(5,10)); s4
+            [-11, -1) ∪ (0, 2] ∪ (5, 10]
+            sage: RealSet.intersection_of_realsets([s1, s2])
+            (1, 2)
+            sage: RealSet.intersection_of_realsets([s1, s3])
+            {1}
+            sage: RealSet.intersection_of_realsets([s2, s3])
+            {}
+            sage: RealSet.intersection_of_realsets([s1, s2, s3])
+            {}
+            sage: RealSet.intersection_of_realsets([s1, s4])
+            (0, 2) ∪ {10}
+            sage: RealSet.intersection_of_realsets([s2, s4])
+            [-11, -10] ∪ (1, 2]
+            sage: RealSet.intersection_of_realsets([s1, s2, s4])
+            (1, 2)
+        """
+        n = len(realsets)
+        scan = []
+        for realset in realsets:
+            scan.append(realset._scan_interval())
+        scan = merge(*scan)
+        intersection = RealSet._scan_line_intersection(scan, n)
+        return RealSet(*intersection)
 
     def intersection(self, *other):
         """
