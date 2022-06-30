@@ -73,6 +73,9 @@ AUTHORS:
 - Jordi Saludes (2011-12-10): Documentation and file reorganization.
 
 - Volker Braun (2013-06-22): Rewrite
+
+- Yueqi Li (2022-06-27): Extend union and intersection from pairwise to multiple real sets. Improve
+  are_pairwise_disjoint, difference, symmetric difference with scan-line algorithm
 """
 
 # ****************************************************************************
@@ -94,9 +97,9 @@ from sage.sets.set import Set_base, Set_boolean_operators, Set_add_sub_operators
 from sage.rings.integer_ring import ZZ
 from sage.rings.real_lazy import LazyFieldElement, RLF
 from sage.rings.infinity import infinity, minus_infinity
-
 from sage.misc.superseded import deprecated_function_alias
 from heapq import *
+
 
 @richcmp_method
 class InternalRealInterval(UniqueRepresentation, Parent):
@@ -2038,35 +2041,6 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         """
         return merge(self._scan_left_endpoint(tag), self._scan_right_endpoint(tag))
 
-    # -------------------Test-------------------------------------
-
-    @staticmethod
-    def createRandomSortedList(num, start=1, end=10000):
-        arr = []
-        tmp = random.randint(start, end)
-
-        for x in range(num):
-
-            while tmp in arr:
-                tmp = random.randint(start, end)
-
-            arr.append(tmp)
-
-        arr.sort()
-
-        return arr
-
-    @staticmethod
-    def createRandomInterval(num):
-        arr = RealSet.createRandomSortedList(num // 2)
-        interval = []
-        for _ in arr:
-            a = arr.pop(0)
-            b = arr.pop(0)
-            interval.append([a, b])
-        return interval
-
-    # -----------------------------------------------------------
     @staticmethod
     def _scan_line_union(scan):
         """
@@ -2092,7 +2066,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         return union
 
     @staticmethod
-    def union_of_realsets(realsets):
+    def union_of_realsets(*real_set_collection):
         """
         Compute the union of a list/tuple/iterable :class:`RealSet`.
 
@@ -2108,28 +2082,24 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
 
             sage: s1 = RealSet([1, 2], (2, 3)); s1
             [1, 3)
-            sage: s2 = RealSet([-1, -1]); s2
+            sage: s2 = RealSet([-1, -1]); s2  # singlenton
             {-1}
-            sage: s3 = RealSet(3, oo); s3
+            sage: s3 = RealSet(3, oo); s3 # unbounded set
             (3, +oo)
             sage: s4 = RealSet(RealSet.closed_open(3, 5), (1, 2)); s4
             (1, 2) ∪ [3, 5)
-            sage: s5 = RealSet(0,0); s5
+            sage: s5 = RealSet(0,0); s5  # empty set
             {}
-            sage: RealSet.union_of_realsets([s1, s2])
-            {-1} ∪ [1, 3)
-            sage: RealSet.union_of_realsets([s1, s3])
-            [1, 3) ∪ (3, +oo)
-            sage: RealSet.union_of_realsets([s1, s2, s3])
+            sage: RealSet.union_of_realsets(s1, s2, s3)
             {-1} ∪ [1, 3) ∪ (3, +oo)
-            sage: RealSet.union_of_realsets([s1, s2, s4])
+            sage: RealSet.union_of_realsets(s1, s2, s4)
             {-1} ∪ [1, 5)
-            sage: RealSet.union_of_realsets([s1, s2, s3, s4])
+            sage: RealSet.union_of_realsets(s1, s2, s3, s4, (2,3))
             {-1} ∪ [1, +oo)
-            sage: RealSet.union_of_realsets([s1, s2, s3, s4, s5])
+            sage: RealSet.union_of_realsets(s1, s2, s3, s4, s5)
             {-1} ∪ [1, +oo)
         """
-
+        realsets = [RealSet(_) for _ in real_set_collection]
         scan = []
         for real_set in realsets:
             scan.append(real_set._scan_interval())
@@ -2163,7 +2133,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             (0, 3)
         """
         other = RealSet(*other)
-        return RealSet.union_of_realsets([self, other])
+        return RealSet.union_of_realsets(self, other)
 
     @staticmethod
     def _scan_line_intersection(scan, n):
@@ -2192,7 +2162,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
 
 
     @staticmethod
-    def intersection_of_realsets(realsets):
+    def intersection_of_realsets(*real_set_collection):
         """
         Compute the intersection of a list/tuple/iterable of :class:`RealSet`.
 
@@ -2205,30 +2175,25 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         The set-theoretic union as a new :class:`RealSet`.
 
         EXAMPLES::
-
-            sage: s1 = RealSet(0,2) + RealSet.unbounded_above_closed(10);  s1
+            unbounded intervals
+            sage: s1 = RealSet(0,2) + RealSet.unbounded_above_closed(10);  s1  #unbounded intervals
             (0, 2) ∪ [10, +oo)
             sage: s2 = RealSet(1,3) + RealSet.unbounded_below_closed(-10);  s2
             (-oo, -10] ∪ (1, 3)
-            sage: s3 = RealSet([1, 1]); s3
+            sage: s3 = RealSet([1, 1]); s3   #singleton
             {1}
             sage: s4 = RealSet(RealSet.open_closed(0, 2), RealSet.closed_open(-11, -1), RealSet.open_closed(5,10)); s4
             [-11, -1) ∪ (0, 2] ∪ (5, 10]
-            sage: RealSet.intersection_of_realsets([s1, s2])
+            sage: RealSet.intersection_of_realsets(s1, s2)
             (1, 2)
-            sage: RealSet.intersection_of_realsets([s1, s3])
-            {1}
-            sage: RealSet.intersection_of_realsets([s2, s3])
+            sage: RealSet.intersection_of_realsets(s1, s2, s3)
             {}
-            sage: RealSet.intersection_of_realsets([s1, s2, s3])
+            sage: RealSet.intersection_of_realsets(s1, s4, (1,1))  # empty set
             {}
-            sage: RealSet.intersection_of_realsets([s1, s4])
-            (0, 2) ∪ {10}
-            sage: RealSet.intersection_of_realsets([s2, s4])
-            [-11, -10] ∪ (1, 2]
-            sage: RealSet.intersection_of_realsets([s1, s2, s4])
+            sage: RealSet.intersection_of_realsets(s1, s2, s4)
             (1, 2)
         """
+        realsets = [RealSet(_) for _ in real_set_collection]
         n = len(realsets)
         scan = []
         for realset in realsets:
@@ -2274,7 +2239,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             {1} ∪ {2}
         """
         other = RealSet(*other)
-        return RealSet.intersection_of_realsets([self, other])
+        return RealSet.intersection_of_realsets(self, other)
 
     def inf(self):
         """
@@ -2535,28 +2500,6 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             sage: J.is_subset(K)
             False
         """
-        # other = RealSet(*other)
-        # scan = []
-        # intersection = []
-        # realsets = [self, other]
-        # for index, real_set in enumerate(realsets):
-        #     scan.append(real_set._scan_interval(tag=index))
-        # scan = merge(*scan)
-        # interval_indicators = [0 for _ in realsets]
-        # (on_x, on_epsilon) = (None, None)
-        # for (x, epsilon), delta, index in scan:
-        #     was_on = all(on > 0 for on in interval_indicators)
-        #     interval_indicators[index] -= delta
-        #     assert interval_indicators[index] >= 0
-        #     now_on = all(on > 0 for on in interval_indicators)
-        #     if was_on:
-        #         if (on_x, on_epsilon) < (x, epsilon):
-        #             intersection.append(InternalRealInterval(on_x, on_epsilon == 0, x, epsilon > 0))
-        #     if now_on:
-        #         (on_x, on_epsilon) = (x, epsilon)
-        #     else:
-        #         (on_x, on_epsilon) = (None, None)
-        # return RealSet(*intersection) == self
         return RealSet(*other).intersection(self) == self
 
     is_included_in = deprecated_function_alias(31927, is_subset)
@@ -2687,7 +2630,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         return RealSet(*[RealSet.point(x) for i in self._intervals for x in i.boundary_points()])
 
     @staticmethod
-    def convex_hull(realsets):
+    def convex_hull(*real_set_collection):
         """
         Return the convex hull of a list/tuple/iterable of :class:`RealInterval`
 
@@ -2700,28 +2643,29 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         The convex hull as a new :class:`RealInterval`.
 
         EXAMPLES::
-
+            #unbounded set
             sage: s1 = RealSet(0,2) + RealSet.unbounded_above_closed(10);  s1
             (0, 2) ∪ [10, +oo)
             sage: s2 = s2 = RealSet(1,3) + RealSet.unbounded_below_closed(-10);  s2
             (-oo, -10] ∪ (1, 3)
             sage: s3 = RealSet((0,2),RealSet.point(8)); s3
             (0, 2) ∪ {8}
-            sage: s4 = RealSet(0,0); s4
+            sage: s4 = RealSet(0,0); s4  # empty set
             {}
-            sage: RealSet.convex_hull([s1])
+            sage: RealSet.convex_hull(s1)
             (0, +oo)
-            sage: RealSet.convex_hull([s2])
+            sage: RealSet.convex_hull(s2)
             (-oo, 3)
-            sage: RealSet.convex_hull([s3])
+            sage: RealSet.convex_hull(s3)
             (0, 8]
-            sage: RealSet.convex_hull([s1, s2])
+            sage: RealSet.convex_hull(s1, s2)
             (-oo, +oo)
-            sage: RealSet.convex_hull([s2, s3])
+            sage: RealSet.convex_hull(s2, s3)
             (-oo, 8]
-            sage: RealSet.convex_hull([s2, s3, s4])
+            sage: RealSet.convex_hull(s2, s3, s4)
             (-oo, 8]
         """
+        realsets = [RealSet(_) for _ in real_set_collection]
         scan = []
         for real_set in realsets:
             scan.append(real_set._scan_interval())
@@ -2786,12 +2730,12 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             True
         """
         other = RealSet(*other)
-        return self.are_pairwise_disjoint([self, other])
+        return self.are_pairwise_disjoint(self, other)
 
     is_disjoint_from = deprecated_function_alias(31927, is_disjoint)
 
     @staticmethod
-    def are_pairwise_disjoint(realsets):
+    def are_pairwise_disjoint(*real_set_collection):
         """
         Test whether sets are pairwise disjoint
 
@@ -2810,13 +2754,14 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             sage: s2 = RealSet((1, 2))
             sage: s3 = RealSet.point(3)
             sage: s4 = s4 = RealSet([1, -1/2])
-            sage: RealSet.are_pairwise_disjoint([s1, s2, s3])
+            sage: RealSet.are_pairwise_disjoint(s1, s2, s3)
             True
-            sage: RealSet.are_pairwise_disjoint([s1, s2, s3, RealSet.point(10)])
+            sage: RealSet.are_pairwise_disjoint(s1, s2, s3, [10, 10])
             True
-            sage: RealSet.are_pairwise_disjoint([s1, s2, s3, s4])
+            sage: RealSet.are_pairwise_disjoint(s1, s2, s3, s4, (2,4))
             False
         """
+        realsets = [RealSet(_) for _ in real_set_collection]
         scan = []
         for real_set in realsets:
             scan.append(real_set._scan_interval())
