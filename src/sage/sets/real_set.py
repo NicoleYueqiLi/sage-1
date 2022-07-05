@@ -74,7 +74,8 @@ AUTHORS:
 
 - Volker Braun (2013-06-22): Rewrite
 
-- Yueqi Li (2022-06-27): Extend union and intersection from pairwise to multiple real sets. Improve
+- Yueqi Li (2022-06-27): Extend union and intersection from pairwise to multiple real sets with
+  scan-line algorithm, implement convex_hull and is_connected in RealSet. Improve
   are_pairwise_disjoint, difference, symmetric difference with scan-line algorithm
 """
 
@@ -99,7 +100,8 @@ from sage.rings.real_lazy import LazyFieldElement, RLF
 from sage.rings.infinity import infinity, minus_infinity
 from sage.misc.superseded import deprecated_function_alias
 from heapq import *
-
+import random
+import time
 
 @richcmp_method
 class InternalRealInterval(UniqueRepresentation, Parent):
@@ -1184,10 +1186,15 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
 
             return ambient.manifold().canonical_chart().pullback(real_set, name=name, latex_name=latex_name)
 
+        sort_needed = True
+        if 'sort_needed' in kwds:
+            sort_needed = kwds.pop('sort_needed', None)
+
+        # Need to change the error message here, since we support sort_needed now.
         if kwds:
             raise TypeError(
-                f'unless manifold keywords {manifold_keywords} are given, RealSet constructors take no keyword arguments')
-
+                f'unless manifold keywords {manifold_keywords} are given, RealSet constructors take no keyword arguments.'
+                f'Currently received additional terms: {kwds}')
         from sage.structure.element import Expression
         if len(args) == 1 and isinstance(args[0], RealSet):
             return args[0]  # common optimization
@@ -1277,7 +1284,9 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
                                                           upper, upper_closed))
                 else:
                     raise ValueError(str(arg) + ' does not determine real interval')
-        intervals = RealSet.normalize(intervals)
+
+        if sort_needed:
+            intervals = RealSet.normalize(intervals)
         return UniqueRepresentation.__classcall__(cls, *intervals)
 
     def __init__(self, *intervals):
@@ -1555,11 +1564,29 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             sage: RealSet(0,0)
             {}
         """
+        # intervals = sorted(intervals)
+        # if not intervals:
+        #     return tuple()
+        # merged = []
+        # curr = intervals.pop(0)
+        # while intervals:
+        #     next = intervals.pop(0)
+        #     if curr._upper > next._lower or (
+        #             curr._upper == next._lower and
+        #             (curr._upper_closed or next._lower_closed)):
+        #         curr = curr.convex_hull(next)
+        #     else:
+        #         if not curr.is_empty():
+        #             merged.append(curr)
+        #         curr = next
+        # if not curr.is_empty():
+        #     merged.append(curr)
+        # return tuple(merged)
         scan = []
-        for index, interval in enumerate(intervals):
-            scan.append([interval._scan_left_endpoint()])
-            scan.append([interval._scan_right_endpoint()])
-        scan = merge(*scan)
+        for interval in intervals:
+            scan.append(interval._scan_left_endpoint())
+            scan.append(interval._scan_right_endpoint())
+        scan = sorted(scan)
         union = RealSet._scan_line_union(scan)
         return tuple(union)
 
@@ -2041,10 +2068,83 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         """
         return merge(self._scan_left_endpoint(tag), self._scan_right_endpoint(tag))
 
+    # -------------------Test-------------------------------------
+
+    @staticmethod
+    def createRandomSortedList(num, start=1, end=10000):
+        arr = []
+        tmp = random.randint(start, end)
+
+        for x in range(num):
+
+            while tmp in arr:
+                tmp = random.randint(start, end)
+
+            arr.append(tmp)
+
+        arr.sort()
+
+        return arr
+
+    @staticmethod
+    def createRandomInterval(num):
+        arr = RealSet.createRandomSortedList(num // 2)
+        interval = []
+        for _ in arr:
+            a = arr.pop(0)
+            b = arr.pop(0)
+            interval.append([a, b])
+        return interval
+    #
+    @staticmethod
+    def create_test_file(num_of_example):
+        with open('test.txt', 'w') as fp:
+            for _ in range(num_of_example):
+               fp.write("%s\n" % RealSet.createRandomInterval(10000))
+        print("done")
+
+    @staticmethod
+    def load_test_file():
+        with open('test.txt', 'r') as rd:
+            lines = rd.readlines()
+            return lines
+
+    @staticmethod
+    def timing_test():
+        test = RealSet.load_test_file()
+        total_time = 0
+        with open('result_union.txt', 'w') as fp:
+            for i in range(len(test)-1):
+                s1 = RealSet(*eval(test[i]))
+                s2 = RealSet(*eval(test[i+1]))
+                start = time.time()
+                s1.union(s2)
+                end = time.time()
+                tim = end - start
+                print(tim)
+                total_time += tim
+                fp.write("%s\n" % tim)
+        print("average", total_time/len(test))
+        print("done")
+
+    # -----------------------------------------------------------
+
     @staticmethod
     def _scan_line_union(scan):
         """
         Helper function for union of :class:`RealSet` and constructor
+
+         INPUT:
+
+        - ``scan`` -- a event from the scan union result
+
+        OUTPUT:
+
+        The set-theoretic union as a list.
+        #
+        # EXAMPLE::
+        #
+        # sage: RealSet._scan_line_union(
         """
         union = []
         interval_indicator = 0
@@ -2105,7 +2205,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             scan.append(real_set._scan_interval())
         scan = merge(*scan)
         union = RealSet._scan_line_union(scan)
-        return RealSet(*union)
+        return RealSet(*union, sort_needed=False)
 
     def union(self, *other):
         """
@@ -2133,7 +2233,10 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             (0, 3)
         """
         other = RealSet(*other)
-        return RealSet.union_of_realsets(self, other)
+        intervals = self._intervals + other._intervals
+        return RealSet(*intervals)
+        # other = RealSet(*other)
+        # return RealSet.union_of_realsets(self, other)
 
     @staticmethod
     def _scan_line_intersection(scan, n):
@@ -2200,7 +2303,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             scan.append(realset._scan_interval())
         scan = merge(*scan)
         intersection = RealSet._scan_line_intersection(scan, n)
-        return RealSet(*intersection)
+        return RealSet(*intersection, sort_needed=False)
 
     def intersection(self, *other):
         """
@@ -2391,7 +2494,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         scan = merge(self._scan_interval(True),
                      remove_lists._scan_interval(False))
         res = self._scan_line_difference(scan)
-        return RealSet(*res)
+        return RealSet(*res, sort_needed=False)
 
     @staticmethod
     def _scan_line_symmetric_difference(scan):
@@ -2444,7 +2547,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         scan = merge(self._scan_interval(True),
                      other._scan_interval(False))
         symmetric_difference = self._scan_line_symmetric_difference(scan)
-        return RealSet(*symmetric_difference)
+        return RealSet(*symmetric_difference, sort_needed=False)
 
     def contains(self, x):
         """
