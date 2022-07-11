@@ -1186,11 +1186,10 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
 
             return ambient.manifold().canonical_chart().pullback(real_set, name=name, latex_name=latex_name)
 
-        sort_needed = True
-        if 'sort_needed' in kwds:
-            sort_needed = kwds.pop('sort_needed', None)
+        normalized = False
+        if 'normalized' in kwds:
+            normalized = kwds.pop('normalized', None)
 
-        # Need to change the error message here, since we support sort_needed now.
         if kwds:
             raise TypeError(
                 f'unless manifold keywords {manifold_keywords} are given, RealSet constructors take no keyword arguments.'
@@ -1285,7 +1284,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
                 else:
                     raise ValueError(str(arg) + ' does not determine real interval')
 
-        if sort_needed:
+        if not normalized:
             intervals = RealSet.normalize(intervals)
         return UniqueRepresentation.__classcall__(cls, *intervals)
 
@@ -2075,7 +2074,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         arr = []
         tmp = random.randint(start, end)
 
-        for x in range(num):
+        for _ in range(num):
 
             while tmp in arr:
                 tmp = random.randint(start, end)
@@ -2098,14 +2097,14 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
     #
     @staticmethod
     def create_test_file(num_of_example):
-        with open('test.txt', 'w') as fp:
+        with open('test_real.txt', 'w') as fp:
             for _ in range(num_of_example):
-               fp.write("%s\n" % RealSet.createRandomInterval(10000))
+               fp.write("%s\n" % RealSet.createRandomInterval(1000000))
         print("done")
 
     @staticmethod
     def load_test_file():
-        with open('test.txt', 'r') as rd:
+        with open('test_real.txt', 'r') as rd:
             lines = rd.readlines()
             return lines
 
@@ -2113,18 +2112,21 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
     def timing_test():
         test = RealSet.load_test_file()
         total_time = 0
-        with open('result_union.txt', 'w') as fp:
-            for i in range(len(test)-1):
-                s1 = RealSet(*eval(test[i]))
-                s2 = RealSet(*eval(test[i+1]))
+        with open('result_realset.txt', 'w') as fp:
+            for i in range(len(test)):
+                # s1 = RealSet(*eval(test[i]))
+                # s2 = RealSet(*eval(test[i+1]))
+                # s3 = RealSet(*eval(test[i+2]))
+                # s4 = RealSet(*eval(test[i+3]))
+                # s5 = RealSet(*eval(test[i+4]))
                 start = time.time()
-                s1.union(s2)
+                RealSet(i)
                 end = time.time()
                 tim = end - start
                 print(tim)
                 total_time += tim
                 fp.write("%s\n" % tim)
-        print("average", total_time/len(test))
+        print("average", total_time/(len(test)-1))
         print("done")
 
     # -----------------------------------------------------------
@@ -2205,7 +2207,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             scan.append(real_set._scan_interval())
         scan = merge(*scan)
         union = RealSet._scan_line_union(scan)
-        return RealSet(*union, sort_needed=False)
+        return RealSet(*union, normalized=True)
 
     def union(self, *other):
         """
@@ -2303,7 +2305,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             scan.append(realset._scan_interval())
         scan = merge(*scan)
         intersection = RealSet._scan_line_intersection(scan, n)
-        return RealSet(*intersection, sort_needed=False)
+        return RealSet(*intersection, normalized=True)
 
     def intersection(self, *other):
         """
@@ -2494,7 +2496,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         scan = merge(self._scan_interval(True),
                      remove_lists._scan_interval(False))
         res = self._scan_line_difference(scan)
-        return RealSet(*res, sort_needed=False)
+        return RealSet(*res, normalized=True)
 
     @staticmethod
     def _scan_line_symmetric_difference(scan):
@@ -2547,7 +2549,7 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
         scan = merge(self._scan_interval(True),
                      other._scan_interval(False))
         symmetric_difference = self._scan_line_symmetric_difference(scan)
-        return RealSet(*symmetric_difference, sort_needed=False)
+        return RealSet(*symmetric_difference, normalized=True)
 
     def contains(self, x):
         """
@@ -2603,6 +2605,28 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
             sage: J.is_subset(K)
             False
         """
+        # other = RealSet(*other)
+        # scan = []
+        # intersection = []
+        # realsets = [self, other]
+        # for index, real_set in enumerate(realsets):
+        #     scan.append(real_set._scan_interval(tag=index))
+        # scan = merge(*scan)
+        # interval_indicators = [0 for _ in realsets]
+        # (on_x, on_epsilon) = (None, None)
+        # for (x, epsilon), delta, index in scan:
+        #     was_on = all(on > 0 for on in interval_indicators)
+        #     interval_indicators[index] -= delta
+        #     assert interval_indicators[index] >= 0
+        #     now_on = all(on > 0 for on in interval_indicators)
+        #     if was_on:
+        #         if (on_x, on_epsilon) < (x, epsilon):
+        #             intersection.append(InternalRealInterval(on_x, on_epsilon == 0, x, epsilon > 0))
+        #     if now_on:
+        #         (on_x, on_epsilon) = (x, epsilon)
+        #     else:
+        #         (on_x, on_epsilon) = (None, None)
+        # return RealSet(*intersection) == self
         return RealSet(*other).intersection(self) == self
 
     is_included_in = deprecated_function_alias(31927, is_subset)
