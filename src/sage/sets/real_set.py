@@ -100,8 +100,7 @@ from sage.rings.real_lazy import LazyFieldElement, RLF
 from sage.rings.infinity import infinity, minus_infinity
 from sage.misc.superseded import deprecated_function_alias
 from heapq import *
-import random
-import time
+
 
 @richcmp_method
 class InternalRealInterval(UniqueRepresentation, Parent):
@@ -2066,70 +2065,6 @@ class RealSet(UniqueRepresentation, Parent, Set_base,
 
         """
         return merge(self._scan_left_endpoint(tag), self._scan_right_endpoint(tag))
-
-    # -------------------Test-------------------------------------
-
-    @staticmethod
-    def createRandomSortedList(num, start=1, end=10000):
-        arr = []
-        tmp = random.randint(start, end)
-
-        for _ in range(num):
-
-            while tmp in arr:
-                tmp = random.randint(start, end)
-
-            arr.append(tmp)
-
-        arr.sort()
-
-        return arr
-
-    @staticmethod
-    def createRandomInterval(num):
-        arr = RealSet.createRandomSortedList(num // 2)
-        interval = []
-        for _ in arr:
-            a = arr.pop(0)
-            b = arr.pop(0)
-            interval.append([a, b])
-        return interval
-    #
-    @staticmethod
-    def create_test_file(num_of_example):
-        with open('test_real.txt', 'w') as fp:
-            for _ in range(num_of_example):
-               fp.write("%s\n" % RealSet.createRandomInterval(1000000))
-        print("done")
-
-    @staticmethod
-    def load_test_file():
-        with open('test_real.txt', 'r') as rd:
-            lines = rd.readlines()
-            return lines
-
-    @staticmethod
-    def timing_test():
-        test = RealSet.load_test_file()
-        total_time = 0
-        with open('result_realset.txt', 'w') as fp:
-            for i in range(len(test)):
-                # s1 = RealSet(*eval(test[i]))
-                # s2 = RealSet(*eval(test[i+1]))
-                # s3 = RealSet(*eval(test[i+2]))
-                # s4 = RealSet(*eval(test[i+3]))
-                # s5 = RealSet(*eval(test[i+4]))
-                start = time.time()
-                RealSet(i)
-                end = time.time()
-                tim = end - start
-                print(tim)
-                total_time += tim
-                fp.write("%s\n" % tim)
-        print("average", total_time/(len(test)-1))
-        print("done")
-
-    # -----------------------------------------------------------
 
     @staticmethod
     def _scan_line_union(scan):
