@@ -280,37 +280,74 @@ class PiecewiseFunction:
     #     return PiecewiseFunction((RealSet(*result_pairs[func]), func) for func in result_pairs)
 
     def piecewise_add(self, other):
-        # R.<t> = QQ[]
-        # f1 = 1 - t
-        # f2 = t^4 - t^2
-        # f3 = t^2
-        # f4 = 1-t^7
-        # D1 = RealSet([0, 1], [4, 5])
-        # D2 = RealSet([2, 3], [6, 7])
-        # D3 = RealSet([0, 1], [4, 5])
-        # D4 = RealSet([2, 3], [6, 7])
-        # p = piecewise([[D1, f1], [D2, f2]])
-        # q = piecewise([[D3, f3], [D4, f4]])
-        # p.piecewise_add(q)
+        r"""
+        Add two identical domain piecewise function
+
+        INPUT:
+
+        - ``other`` -- Another piecewise function
+
+        OUTPUT:
+
+        A piecewise-defined function.
+
+        EXAMPLES::
+
+            sage: R.<t> = QQ[]
+            sage: f1 = 1 - t
+            sage: f2 = t^4 - t^2
+            sage: f3 = t^2
+            sage: f4 = 1-t^7
+            sage: D1 = RealSet([0, 1], [4, 5])
+            sage: D2 = RealSet([2, 3], [6, 7])
+            sage: D3 = RealSet([0, 1], [4, 5])
+            sage: D4 = RealSet([2, 3], [6, 7])
+            sage: p = piecewise([[D1, f1], [D2, f2]])
+            sage: q = piecewise([[D3, f3], [D4, f4]])
+            sage: p.piecewise_add(q)
+            piecewise(t |--> t^2 - t + 1 on [0, 1] ∪ [4, 5], t |--> -t^7 + t^4 - t^2 + 1 on [2, 3] ∪ [6, 7]; t)
+            sage: D5 = RealSet([2, 3], [7, 8])
+            sage: f = piecewise([[D3, f3], [D5, f4]])
+            ValueError: Inconsistent domains. For union add or intersection add, please use piecewise_add_general
+        """
+
+
         if len(self.domain_list) != len(other.domain_list) or any(self_dom != other_dom for self_dom, other_dom in zip(self.domain_list, other.domain_list)):
             raise ValueError("Inconsistent domains. For union add or intersection add, please use piecewise_add_general")
 
         return PiecewiseFunction((dom, self_func + other_func) for dom, self_func, other_func in zip(self.domain_list, self.func_list, other.func_list))
 
     def piecewise_add_general(self, other, union=True):
-        # R.<t> = QQ[]
-        # f1 = 1 - t
-        # f2 = t^4 - t^2
-        # f3 = t^2
-        # f4 = 1-t^7
-        # D1 = RealSet([0, 1], [4, 5])
-        # D2 = RealSet([2, 3], [6, 7])
-        # D3 = RealSet([1, 2], [3, 4])
-        # D4 = RealSet([5, 6], [7, 8])
-        # p = piecewise([[D1, f1], [D2, f2]])
-        # q = piecewise([[D3, f3], [D4, f4]])
-        # p.piecewise_add_general(q, True)
-        # p.piecewise_add_general(q, False)
+        r"""
+        Add two different domains piecewise function
+
+        INPUT:
+
+        - ``other`` -- Another piecewise function
+        - ``union `` -- Boolean, if True, take union of two domain and add, False: add two function intersection part
+
+        OUTPUT:
+
+        A piecewise-defined function.
+
+        EXAMPLES::
+
+            sage: R.<t> = QQ[]
+            sage: f1 = 1 - t
+            sage: f2 = t^4 - t^2
+            sage: f3 = t^2
+            sage: f4 = 1-t^7
+            sage: D1 = RealSet([0, 1], [4, 5])
+            sage: D2 = RealSet([2, 3], [6, 7])
+            sage: D3 = RealSet([-1, 0], [4, 5])
+            sage: D4 = RealSet([2, 3], [7, 8])
+            sage: p = piecewise([[D1, f1], [D2, f2]])
+            sage: q = piecewise([[D3, f3], [D4, f4]])
+            sage: p.piecewise_add_general(q, True)
+            piecewise(t |--> t^2 on [-1, 0), t |--> t^2 - t + 1 on {0} ∪ [4, 5], t |--> -t + 1 on (0, 1], t |--> -t^7 + t^4 - t^2 + 1 on [2, 3] ∪ {7}, t |--> -t^7 + 1 on (7, 8], t |--> t^4 - t^2 on [6, 7); t)
+            sage: p.piecewise_add_general(q, False)
+            piecewise(t |--> t^2 - t + 1 on {0} ∪ [4, 5], t |--> -t^7 + t^4 - t^2 + 1 on [2, 3] ∪ {7}; t)
+        """
 
         n_self = len(self.domain_list)
         result_pairs = []
@@ -325,38 +362,74 @@ class PiecewiseFunction:
         return PiecewiseFunction(result_pairs)
 
     def piecewise_mul(self, other):
-        # R.<t> = QQ[]
-        # f1 = 1 - t
-        # f2 = t^4 - t^2
-        # f3 = t^2
-        # f4 = 1-t^7
-        # D1 = RealSet([0, 1], [4, 5])
-        # D2 = RealSet([2, 3], [6, 7])
-        # D3 = RealSet([0, 1], [4, 5])
-        # D4 = RealSet([2, 3], [6, 7])
-        # p = piecewise([[D1, f1], [D2, f2]])
-        # q = piecewise([[D3, f3], [D4, f4]])
-        # p.piecewise_mul(q)
+        r"""
+        multiply two identical domain piecewise function
+
+        INPUT:
+
+        - ``other`` -- Another piecewise function
+
+        OUTPUT:
+
+        A piecewise-defined function.
+
+        EXAMPLES::
+
+            sage: R.<t> = QQ[]
+            sage: f1 = 1 - t
+            sage: f2 = t^4 - t^2
+            sage: f3 = t^2
+            sage: f4 = 1-t^7
+            sage: D1 = RealSet([0, 1], [4, 5])
+            sage: D2 = RealSet([2, 3], [6, 7])
+            sage: D3 = RealSet([0, 1], [4, 5])
+            sage: D4 = RealSet([2, 3], [6, 7])
+            sage: p = piecewise([[D1, f1], [D2, f2]])
+            sage: q = piecewise([[D3, f3], [D4, f4]])
+            sage: p.piecewise_mul(q)
+            piecewise(t |--> -t^3 + t^2 on [0, 1] ∪ [4, 5], t |--> -t^11 + t^9 + t^4 - t^2 on [2, 3] ∪ [6, 7]; t)
+            sage: D5 = RealSet([2, 3], [7, 8])
+            sage: f = piecewise([[D3, f3], [D5, f4]])
+            sage: p.piecewise_mul(f)
+            ValueError: Inconsistent domains. For union multiplication or intersection multiplication, please use piecewise_mul_general
+        """
+
         if len(self.domain_list) != len(other.domain_list) or any(self_dom != other_dom for self_dom, other_dom in zip(self.domain_list, other.domain_list)):
-            raise ValueError("Inconsistent domains. For union add or intersection add, please use piecewise_add_general")
+            raise ValueError("Inconsistent domains. For union multiplication or intersection multiplication, please use piecewise_mul_general")
 
         return PiecewiseFunction((dom, self_func * other_func) for dom, self_func, other_func in zip(self.domain_list, self.func_list, other.func_list))
 
     def piecewise_mul_general(self, other, union=True):
-        # R.<t> = QQ[]
-        # f1 = 1 - t
-        # f2 = t^4 - t^2
-        # f3 = t^2
-        # f4 = 1-t^7
-        # D1 = RealSet([0, 1], [4, 5])
-        # D2 = RealSet([2, 3], [6, 7])
-        # D3 = RealSet([1, 2], [3, 4])
-        # D4 = RealSet([5, 6], [7, 8])
-        # p = piecewise([[D1, f1], [D2, f2]])
-        # q = piecewise([[D3, f3], [D4, f4]])
-        # p.piecewise_mul_general(q, True)
-        # p.piecewise_mul_general(q, False)
+        r"""
+        multiply two different domains piecewise function
 
+        INPUT:
+
+        - ``other`` -- Another piecewise function
+        - ``union `` -- Boolean, if True, take union of two domain the multiply, False: multiply two function intersection part
+
+        OUTPUT:
+
+        A piecewise-defined function.
+
+        EXAMPLES::
+
+            sage:R.<t> = QQ[]
+            sage: f1 = 1 - t
+            sage: f2 = t^4 - t^2
+            sage: f3 = t^2
+            sage: f4 = 1-t^7
+            sage: D1 = RealSet([0, 1])
+            sage: D2 = RealSet([2, 3])
+            sage: D3 = RealSet([2, 3])
+            sage: D4 = RealSet([7, 8])
+            sage: p = piecewise([[D1, f1], [D2, f2]])
+            sage: q = piecewise([[D3, f3], [D4, f4]])
+            sage: p.piecewise_mul_general(q, True)
+            piecewise(t |--> -t + 1 on [0, 1], t |--> t^6 - t^4 on [2, 3], t |--> -t^7 + 1 on [7, 8]; t)
+            sage: p.piecewise_mul_general(q, False)
+            piecewise(t |--> t^6 - t^4 on [2, 3]; t)
+    """
         n_self = len(self.domain_list)
         result_pairs = []
         p = RealSet.finest_partitions(*self.domain_list, *other.domain_list)
@@ -370,17 +443,29 @@ class PiecewiseFunction:
         return PiecewiseFunction(result_pairs)
 
     def is_continuous(self):
-        # R.<t> = QQ[]
-        # f1 = t
-        # f2 = (t-1) ^ 2 + 1
-        # f3 = 1 - t
-        # D1 = RealSet([0, 1], [2, 3])
-        # D2 = RealSet((1, 2))
-        # D3 = RealSet((3, +oo))
-        # p = piecewise([[D1, f1], [D2, f2], [D3, f3]])
-        # q = piecewise([[D1, f1], [D2, f2]])
-        # p.is_continuous()
-        # q.is_continuous()
+        r"""
+        Return if the function is continuous
+
+        OUTPUT:
+
+        Boolean.
+
+        EXAMPLES::
+            sage: R.<t> = QQ[]
+            sage: f1 = t
+            sage: f2 = (t-1) ^ 2 + 1
+            sage: f3 = 1 - t
+            sage: D1 = RealSet([0, 1], [2, 3])
+            sage: D2 = RealSet((1, 2))
+            sage: D3 = RealSet((3, +oo))
+            sage: p = piecewise([[D1, f1], [D2, f2], [D3, f3]])
+            sage: q = piecewise([[D1, f1], [D2, f2]])
+            sage: p.is_continuous()
+            False
+            sage: q.is_continuous()
+            True
+        """
+
         for point in self._end_points:
             val, (left, right) = self._end_points[point]
             if val:
@@ -389,15 +474,27 @@ class PiecewiseFunction:
         return True
 
     def is_continuous_defined(self, xmin=0, xmax=1):
-        # R.<t> = QQ[]
-        # f1 = t
-        # f2 = (t - 1) ^ 2 + 1
-        # f3 = 1 - t
-        # D1 = RealSet([0, 1], [2, 3])
-        # D2 = RealSet((1, 2))
-        # D3 = RealSet((3, +oo))
-        # p = piecewise([[D1, f1], [D2, f2], [D3, f3]])
-        # p.is_continuous_defined(0, 3)
+        r"""
+        Return if the function is continuous at certain interval or point
+
+        OUTPUT:
+
+        Boolean.
+
+        EXAMPLES::
+            sage: R.<t> = QQ[]
+            sage: f1 = t
+            sage: f2 = (t - 1) ^ 2 + 1
+            sage: f3 = 1 - t
+            sage: D1 = RealSet([0, 1], [2, 3])
+            sage: D2 = RealSet((1, 2))
+            sage: D3 = RealSet((3, +oo))
+            sage: p = piecewise([[D1, f1], [D2, f2], [D3, f3]])
+            sage: p.is_continuous_defined(0, 3)
+            True
+            sage: p.is_continuous_defined(3)
+            False
+        """
         if not RealSet([xmin, xmax]).is_subset(self.support):
             return False
         for point in self._end_points:
