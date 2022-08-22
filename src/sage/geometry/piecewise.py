@@ -5,7 +5,6 @@ from collections import defaultdict
 from heapq import merge
 import bisect
 
-
 class PiecewiseFunction:
     def __init__(self, function_pieces):
         """
@@ -52,7 +51,12 @@ class PiecewiseFunction:
             non_point = []
             for interval in domain:
                 if interval.is_point():
-                    func_ = func(interval._lower) + 0*func
+                    value = func(interval._lower)
+                    # this value could not be Integer or Rational
+                    # this could be LazyWrapper
+                    if hasattr(value, "_value"):
+                        value = value._value
+                    func_ = value + 0*func
                     if func_ in p:
                         i = p[func_]
                         self.domain_list[i] = self.domain_list[i].union(interval)
@@ -79,6 +83,7 @@ class PiecewiseFunction:
         self.support = RealSet.union_of_realsets(*self.domain_list)
         self._end_points = None
         self._end_points_list = None
+
 
     def _init_end_points(self):
         self._end_points = {}
@@ -248,7 +253,8 @@ class PiecewiseFunction:
             return PiecewiseFunction((dom, func + other) for dom, func in self.__iter__())
 
     __radd__ = __add__
-    
+
+
     def __eq__(self, other):
         """
         Return if to piecewise functions are equal
@@ -604,6 +610,37 @@ class PiecewiseFunction:
             for i, ind in enumerate(inds):
                 if ind > 0:
                     new_pair[1] += self.func_list[i] if i < n_self else other.func_list[i-n_self]
+            result_pairs.append(new_pair)
+
+        return PiecewiseFunction(result_pairs)
+
+    @staticmethod
+    def piecewise_sum_general(piecewise_collection, union=True):
+        # R.<t> = QQ[]
+        # p1 = piecewise([[[0, 2], t], [[3, 5], t^2], [[6, 7], 1 - t]])
+        # p2 = piecewise([[(1, 4), t^3-t^2], [[5, 6], t], [[7, 7], -t]])
+        # p3 = piecewise([[RealSet.closed_open(1, 2), (t+1)^2], [(3, +oo), (t+2)^3]])
+        # p1.piecewise_sum_general([p1, p2, p3], True)
+        # p1.piecewise_sum_general([p1, p2, p3], False)
+
+        realset_cut = [0]
+        for piecewise in piecewise_collection:
+            realset_cut.append(len(piecewise) + realset_cut[-1])
+
+        def get_realset_func_id(i):
+            realset_id = bisect.bisect_right(realset_cut, i) - 1
+            return realset_id, i - realset_cut[realset_id]
+
+        result_pairs = []
+        p = PiecewiseFunction.finest_partitions(*[dom for piecewise in piecewise_collection for dom, _ in piecewise])
+        for real_set, inds in p:
+            new_pair = [real_set, 0]
+            if not union and sum(inds) < len(realset_cut)-1: continue
+            # i - index for realset, ind: True or False
+            for i, ind in enumerate(inds):
+                if ind > 0:
+                    realset_id, func_id = get_realset_func_id(i)
+                    new_pair[1] += piecewise_collection[realset_id].func_list[func_id]
             result_pairs.append(new_pair)
 
         return PiecewiseFunction(result_pairs)
