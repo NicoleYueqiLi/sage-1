@@ -1,4 +1,41 @@
-# coding=utf-8
+# -*- coding: utf-8 -*-
+r"""
+Piecewise-defined Functions
+
+This module implement piecewise polynomial in a single variable. See
+:mod:`sage.sets.real_set` for more information about how to construct
+subsets of the real line for the domains.
+
+EXAMPLES::
+
+    sage: R.<t> = QQ[]
+    sage: f1 = 1 - t
+    sage: f2 = t^4 - t^2
+    sage: D1 = RealSet([0, 1], [4, 5])
+    sage: D2 = RealSet([2, 3], [6, 7])
+    sage: p = piecewise([[D1, f1], [D2, f2]]); p
+    piecewise(t |--> -t + 1 on [0, 1] ∪ [4, 5], t |--> t^4 - t^2 on [2, 3] ∪ [6, 7]; t)
+    sage: p*p
+    piecewise(t |--> t^2 - 2*t + 1 on [0, 1] ∪ [4, 5], t |--> t^8 - 2*t^6 + t^4 on [2, 3] ∪ [6, 7]; t)
+
+
+AUTHORS:
+
+- Yueqi Li, Yuan Zhou (2022-09): initial version
+"""
+
+# ****************************************************************************
+#       Copyright (C) 2006 William Stein <wstein@gmail.com>
+#                     2006 David Joyner <wdjoyner@gmail.com>
+#                     2013 Volker Braun <vbraun.name@gmail.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
+
 from sage.rings.polynomial.polynomial_element import Polynomial, is_Polynomial
 from sage.sets.real_set import InternalRealInterval, RealSet
 from collections import defaultdict
@@ -12,6 +49,17 @@ class PiecewiseFunction(ModuleElement):
         """
         Piecewise polynomial
 
+        INPUT:
+
+        - ``function_pieces`` -- a list of pairs consisting of a
+          domain and a polynomial function.
+
+        OUTPUT:
+
+        A piecewise-defined polynomial. A ``ValueError`` will be raised
+        if the domains of the pieces are not pairwise disjoint or the input
+        function is not polynomial
+
         EXAMPLES::
 
             sage: R.<t> = QQ[]
@@ -21,6 +69,20 @@ class PiecewiseFunction(ModuleElement):
             sage: D2 = RealSet([2, 3], [6, 7])
             sage: p = piecewise([[D1, f1], [D2, f2]]); p
             piecewise(t |--> -t + 1 on [0, 1] ∪ [4, 5], t |--> t^4 - t^2 on [2, 3] ∪ [6, 7]; t)
+
+        TESTS::
+            D3 = RealSet([1, 2])
+            sage: p = piecewise([[D1, f1], [D2, f2], [D3, f2]]); p
+            Traceback (most recent call last):
+            ...
+            ValueError: domains must be pairwise disjoint
+            sage: f3=1+x
+            sage: p = piecewise([[D1, f1], [D2, f2], [D3, f3]]); p
+            Traceback (most recent call last):
+            ...
+            ValueError: Invalid function. Function type must be Polynomial, got <class 'sage.symbolic.expression.Expression'> for x + 1.
+
+
         """
         self.domain_list = []
         self.func_list = []
@@ -33,12 +95,12 @@ class PiecewiseFunction(ModuleElement):
                     domain = RealSet(domain)
                 except:
                     raise ValueError(
-                        "Invalid domain. Should be transformed to RealSet, but got {domain_type} for {domain_value}.".format(
+                        "Invalid domain. Domain must be RealSet, but got {domain_type} for {domain_value}.".format(
                             domain_type=type(domain), domain_value=domain))
             if domain.is_empty():
                 continue
             if not is_Polynomial(func):
-                raise ValueError("Invalid func. Should be type Polynomial, got {func_type} for {func_value}.".format(
+                raise ValueError("Invalid function. Function type must be Polynomial, got {func_type} for {func_value}.".format(
                     func_type=type(func), func_value=func))
             if input_func_type is None:
                 input_func_type = type(func)
@@ -80,13 +142,37 @@ class PiecewiseFunction(ModuleElement):
 
         del p
         if not RealSet.are_pairwise_disjoint(*self.domain_list):
-            raise ValueError("Invalid domain. Should be mutually disjoint.")
+            raise ValueError("domains must be pairwise disjoint")
 
         self.support = RealSet.union_of_realsets(*self.domain_list)
         self._end_points = None
         self._end_points_list = None
 
     def _init_end_points(self):
+        """
+         Compute function value for all end point,  ` end_point^+`, function value at `end_point^-` . It's part of
+         initialization.
+
+        EXAMPLES::
+
+            sage: R.<t> = QQ[]
+            sage: f1 = 1 - t
+            sage: f2 = t^4 - t^2
+            sage: D1 = RealSet([0, 1], [4, 5])
+            sage: D2 = RealSet([2, 3], [6, 7])
+            sage: p = piecewise([[D1, f1], [D2, f2]]); p
+            piecewise(t |--> -t + 1 on [0, 1] ∪ [4, 5], t |--> t^4 - t^2 on [2, 3] ∪ [6, 7]; t)
+            sage: p._init_end_points()
+            sage: p._end_points
+            {0: [1, [None, 1]],
+             1: [0, [0, None]],
+             4: [-3, [None, -3]],
+             5: [-4, [-4, None]],
+             2: [12, [None, 12]],
+             3: [72, [72, None]],
+             6: [1260, [None, 1260]],
+             7: [2352, [2352, None]]}
+        """
         self._end_points = {}
         # [(x, epsilon), delta, i]
         self._end_points_list = [self._iterator(real_set, i) for i, real_set in enumerate(self.domain_list)]
@@ -107,7 +193,7 @@ class PiecewiseFunction(ModuleElement):
 
     def __repr__(self):
         """
-        Return a string representation
+        Return a string representation of piecewise polynomial
 
         OUTPUT:
 
@@ -131,22 +217,15 @@ class PiecewiseFunction(ModuleElement):
 
     def __call__(self, *args, **kwds):
         r"""
-        Piecewise functions
-
-        INPUT:
-
-        - ``function_pieces`` -- a list of pairs consisting of a
-          domain and a symbolic function.
-
-        - ``var=x`` -- a symbolic variable or ``None`` (default). The
-        real variable in which the function is piecewise in.
+        Piecewise polynomial
 
         OUTPUT:
 
         A piecewise-defined function. A ``ValueError`` will be raised
-        if the domains of the pieces are not pairwise disjoint.
+        if more than 1 input
 
         EXAMPLES::
+
             sage: R.<t> = QQ[]
             sage: my_abs = piecewise([((-1, 0), -t), ([0, 1], t)]);  my_abs
             piecewise(t|-->-t on (-1, 0), x|-->t on [0, 1]; t)
@@ -200,6 +279,7 @@ class PiecewiseFunction(ModuleElement):
         domains and functions
 
         EXAMPLES::
+
             sage: R.<t> = QQ[]
             sage: f1 = 1 - t
             sage: f2 = t ^ 4 - t ^ 2
@@ -217,15 +297,15 @@ class PiecewiseFunction(ModuleElement):
 
     def __add__(self, other):
         """
-        Add two identical domain piecewise function
+        Add two identical domain piecewise polynomial
 
         INPUT:
 
-        - ``other`` -- Another piecewise function
+        - ``other`` -- Another piecewise polynomial
 
         OUTPUT:
 
-        A piecewise-defined function.
+        A piecewise-defined polynomial.
 
         EXAMPLES::
 
@@ -266,21 +346,22 @@ class PiecewiseFunction(ModuleElement):
         Boolean
 
         EXAMPLES::
-        sage: R.<t> = QQ[]
-        sage: f1 = t
-        sage: f2 = 2 - t
-        sage: f3 = t
-        sage: f4 = 2 - t
-        sage: D1 = RealSet([0, 1])
-        sage: D2 = RealSet((1, 2))
-        sage: D3 = RealSet(RealSet.closed_open(0, 1))
-        sage: D4 = RealSet(RealSet.closed_open(1, 2))
-        sage: p = piecewise([[D1, f1], [D2, f2]]); p
-        piecewise(t |--> t on [0, 1], t |--> -t + 2 on (1, 2); t)
-        sage: q = piecewise([[D3, f3], [D4, f4]]); q
-        piecewise(t |--> t on [0, 1), t |--> -t + 2 on [1, 2); t)
-        sage: p==q
-        True
+
+            sage: R.<t> = QQ[]
+            sage: f1 = t
+            sage: f2 = 2 - t
+            sage: f3 = t
+            sage: f4 = 2 - t
+            sage: D1 = RealSet([0, 1])
+            sage: D2 = RealSet((1, 2))
+            sage: D3 = RealSet(RealSet.closed_open(0, 1))
+            sage: D4 = RealSet(RealSet.closed_open(1, 2))
+            sage: p = piecewise([[D1, f1], [D2, f2]]); p
+            piecewise(t |--> t on [0, 1], t |--> -t + 2 on (1, 2); t)
+            sage: q = piecewise([[D3, f3], [D4, f4]]); q
+            piecewise(t |--> t on [0, 1), t |--> -t + 2 on [1, 2); t)
+            sage: p==q
+            True
         """
 
         if self.support != other.support or self.var != other.var or any(
@@ -481,7 +562,6 @@ class PiecewiseFunction(ModuleElement):
              (((3, 0), 1), None),
              (((5, 1), -1), None)]
 
-
         """
         for interval in realset:
             yield ((interval._lower, 1 - int(interval._lower_closed)), 1), i
@@ -490,7 +570,8 @@ class PiecewiseFunction(ModuleElement):
     @staticmethod
     def finest_partitions(*real_set_collection):
         """
-        Return the finest partitions
+        Given a set of realsets, this function computes the set of intervals that could represent each realset by
+        taking disjoint union of a subset of such intervals.
 
         INPUT:
 
@@ -499,7 +580,7 @@ class PiecewiseFunction(ModuleElement):
 
         OUTPUT:
 
-        iterator of interval and index of interval
+        iterator of realsets and indicator that which input realsest contain the output realset
 
         EXAMPLES::
 
@@ -512,6 +593,19 @@ class PiecewiseFunction(ModuleElement):
              ([2, 3], (0, 1, 0, 1)),
              ([4, 5], (1, 0, 1, 0)),
              ([6, 7], (0, 1, 0, 1))]
+
+        TESTS::
+
+            sage: D1 = RealSet((0, 1))
+            sage: D2 = RealSet([-1, 1])
+            sage: D3 = RealSet((1, 2))
+            sage: D4 = RealSet([1, 3])
+            sage: list( piecewise.finest_partitions(D1,D2,D3,D4))
+            [([-1, 0], (0, 1, 0, 0)),
+             ((0, 1), (1, 1, 0, 0)),
+             ({1}, (0, 1, 0, 1)),
+             ((1, 2), (0, 0, 1, 1)),
+             ([2, 3], (0, 0, 0, 1))]
         """
         scan = [PiecewiseFunction._iterator(real_set, i) for i, real_set in enumerate(real_set_collection)]
         indicator = [0] * len(scan)
@@ -533,14 +627,32 @@ class PiecewiseFunction(ModuleElement):
 
     @staticmethod
     def piecewise_add(piecewise_collection, union=None):
-        # R.<t> = QQ[]
-        # p1 = piecewise([[[0, 2], t], [[3, 5], t^2], [[6, 7], 1 - t]])
-        # p2 = piecewise([[(1, 4), t^3-t^2], [[5, 6], t], [[7, 7], -t]])
-        # p3 = piecewise([[RealSet.closed_open(1, 2), (t+1)^2], [(3, +oo), (t+2)^3]])
-        # p1.piecewise_add([p1, p2, p3], True)
-        # p1.piecewise_add([p1, p2, p3], False)
-        # p1.piecewise_add([p1, p2, p3])
-        # p1.piecewise_add([p1, p1, p1])
+        """
+        Compute the sum of piecewise collections
+
+        INPUT:
+
+        - ``piecewise_collection`` -- a list of piecewise polynomials
+        - ``union``: If not given, then add same domains piecewise polynomial;
+                    if True, take union of those piecewise collection, then add;
+                    if False, take intersection of piecewise collection, then add
+        OUTPUT:
+
+        Sum of the input piecewise polynomials
+
+        EXAMPLES::
+
+           sage: R.<t> = QQ[]
+           sage: p1 = piecewise([[[0, 2], t], [[3, 5], t^2], [[6, 7], 1 - t]])
+           sage: p2 = piecewise([[[0, 2], t+1], [[5, 6], t], [[7, 7], -t]])
+           sage: p3 = piecewise([[RealSet.closed_open(1, 2), (t+1)^2]])
+           sage: piecewise.piecewise_add([p1,p2, p3],True)
+           piecewise(t |--> 2*t + 1 on [0, 1), t |--> t^2 + 4*t + 2 on [1, 2), t |--> 5 on {2}, t |--> t^2 on [3, 5), t |--> 30 on {5}, t |--> t on (5, 6), t |--> 1 on {6}, t |--> -t + 1 on (6, 7), t |--> -13 on {7}; t)
+           sage: piecewise.piecewise_add([p1,p2,p3],False)
+           piecewise(t |--> t^2 + 4*t + 2 on [1, 2); t)
+           sage: piecewise.piecewise_add([p1,p2,p3])
+           ValueError: Inconsistent domains. Please set union=True for union, or False for intersection.
+        """
 
         realset_info = []
         for i, piecewise in enumerate(piecewise_collection):
@@ -569,14 +681,32 @@ class PiecewiseFunction(ModuleElement):
 
     @staticmethod
     def piecewise_mul(piecewise_collection, union=None):
-        # R.<t> = QQ[]
-        # p1 = piecewise([[[0, 2], t], [[3, 5], t^2], [[6, 7], 1 - t]])
-        # p2 = piecewise([[(1, 4), t^3-t^2], [[5, 6], t], [[7, 7], -t]])
-        # p3 = piecewise([[RealSet.closed_open(1, 2), (t+1)^2], [(3, +oo), (t+2)^3]])
-        # p1.piecewise_add([p1, p2, p3], True)
-        # p1.piecewise_add([p1, p2, p3], False)
-        # p1.piecewise_add([p1, p2, p3])
-        # p1.piecewise_add([p1, p1, p1])
+        """
+        Compute the multiplication of piecewise collections
+
+        INPUT:
+
+        - ``piecewise_collection`` -- a list of piecewise polynomials
+        - ``union``: If not given, then multiply same domains piecewise polynomial;
+                    if True, take union of those piecewise collection, then multiply;
+                    if False, take intersection of piecewise collection, then multiply;
+        OUTPUT:
+
+        Multiplication of the input piecewise polynomials
+
+        EXAMPLES::
+
+           sage: R.<t> = QQ[]
+           sage: p1 = piecewise([[[0, 2], t], [[3, 5], t^2], [[6, 7], 1 - t]])
+           sage: p2 = piecewise([[[0, 2], t+1], [[5, 6], t], [[7, 7], -t]])
+           sage: p3 = piecewise([[RealSet.closed_open(1, 2), (t+1)^2]])
+           sage: piecewise.piecewise_mul([p1,p2, p3],True)
+           piecewise(t |--> 2*t + 1 on [0, 1), t |--> t^2 + 4*t + 2 on [1, 2), t |--> 5 on {2}, t |--> t^2 on [3, 5), t |--> 30 on {5}, t |--> t on (5, 6), t |--> 1 on {6}, t |--> -t + 1 on (6, 7), t |--> -13 on {7}; t)
+           sage: piecewise.piecewise_mul([p1,p2,p3],False)
+           piecewise(t |--> t^2 + 4*t + 2 on [1, 2); t)
+           sage: piecewise.piecewise_mul([p1,p2,p3])
+           ValueError: Inconsistent domains. Please set union=True for union, or False for intersection.
+        """
 
         realset_info = []
         for i, piecewise in enumerate(piecewise_collection):
@@ -695,17 +825,6 @@ class PiecewiseFunction(ModuleElement):
                 return True
         return True
 
-        # O(n) implementation
-        # for point in self._end_points:
-        #     val, (left, right) = self._end_points[point]
-        #     if point == xmin and val != right:
-        #         return False
-        #     elif point == xmax and val != left:
-        #         return False
-        #     elif xmin < point < xmax and (val != left or val != right):
-        #         return False
-        #
-        # return True
 
     def which_pair(self, x0):
         """
@@ -828,117 +947,5 @@ class PiecewiseFunction(ModuleElement):
         """
 
         return PiecewiseFunction((dom, func._derivative(var)) for dom, func in self.__iter__())
-
-    # def piecewise_add(self, other):
-    #     """
-    #     This is old version of piecewise_add. It takes advantage of disjointness of self.domain_list and other.domain_list.
-    #     It utilize greedy method, instead of scan line. Please refer to this for future implementation.
-    #
-    #     Return a new piecewise function with domain the union
-    #     of the original domains and functions summed. Undefined
-    #     intervals in the union domain get function value `0`.
-    #
-    #     EXAMPLES::
-    #
-    #         sage: R.<t> = QQ[]
-    #         sage: f1 = 1 - t
-    #         sage: f2 = t^4 - t^2
-    #         sage: f3 = t^2
-    #         sage: f4 = 1-t^7
-    #         sage: D1 = RealSet([0, 1], [4, 5])
-    #         sage: D2 = RealSet([2, 3], [6, 7])
-    #         sage: D3 = RealSet([1, 2], [3, 4])
-    #         sage: D4 = RealSet([5, 6], [7, 8])
-    #         sage: p = piecewise([[D1, f1], [D2, f2]])
-    #         sage: q = piecewise([[D3, f3], [D4, f4]])
-    #         sage: test = p + q
-    #         sage: test
-    #         piecewise(t |--> -t + 1 on [0, 1) ∪ (4, 5), t |--> t^2 - t + 1 on {1} ∪ {4}, t |--> t^2 on (1, 2) ∪ (3, 4), t |--> t^4 on {2} ∪ {3}, t |--> t^4 - t^2 on (2, 3) ∪ (6, 7), t |--> -t^7 - t + 2 on {5}, t |--> -t^7 + 1 on (5, 6) ∪ (7, 8], t |--> -t^7 + t^4 - t^2 + 1 on {6} ∪ {7}; t)
-    #
-    #         # RealSet.are_pairwise_disjoint(*[dom for dom, _ in test])
-    #         # RealSet.union_of_realsets(*[dom for dom, _ in test])
-    #         # other = PiecewiseFunction((dom, func) for dom, func in other)
-    #     """
-    #     int_func_dict = {}
-    #     for dom, func_id in zip(self.domain_list, range(len(self.func_list))):
-    #         for interval in dom:
-    #             int_func_dict[interval] = (0, func_id)
-    #     for dom, func_id in zip(other.domain_list, range(len(other.func_list))):
-    #         for interval in dom:
-    #             if interval in int_func_dict:
-    #                 int_func_dict[interval] = (2, int_func_dict[interval][1], func_id)
-    #             else:
-    #                 int_func_dict[interval] = (1, func_id)
-    #
-    #     int_list = sorted(list(int_func_dict.keys()),
-    #                       key=lambda x: (x.lower(), x.lower_open(), x.upper(), x.upper_closed()))
-    #     result_pairs = defaultdict(list)
-    #
-    #     curr_interval = None
-    #     curr_func = None
-    #
-    #     while len(int_list) > 0:
-    #         next_interval = int_list.pop(0)
-    #         next_func_info = int_func_dict[next_interval]
-    #         if next_func_info[0] == 0:
-    #             next_func = self.func_list[next_func_info[1]]
-    #         elif next_func_info[0] == 1:
-    #             next_func = other.func_list[next_func_info[1]]
-    #         else:
-    #             next_func = self.func_list[next_func_info[1]] + other.func_list[next_func_info[2]]
-    #         if curr_interval is None:
-    #             curr_interval = next_interval
-    #             curr_func = next_func
-    #             continue
-    #         if next_interval.lower() > curr_interval.upper() or (
-    #                 next_interval.lower() == curr_interval.upper() and not (
-    #                 next_interval.lower_closed() and curr_interval.upper_closed())):
-    #             result_pairs[curr_func].append(curr_interval)
-    #             curr_interval, curr_func = next_interval, next_func
-    #             continue
-    #
-    #         if not (
-    #                 next_interval.lower() == curr_interval.lower() and next_interval.lower_closed() == curr_interval.lower_closed()):
-    #             result_pairs[curr_func].append(RealSet.interval(lower=curr_interval.lower(),
-    #                                                             upper=next_interval.lower(),
-    #                                                             lower_closed=curr_interval.lower_closed(),
-    #                                                             upper_closed=next_interval.lower_open())[0])
-    #         if next_interval.upper() < curr_interval.upper() or (
-    #                 next_interval.upper() == curr_interval.upper() and next_interval.upper_open() and curr_interval.upper_closed()):
-    #             result_pairs[curr_func + next_func].append(RealSet.interval(lower=next_interval.lower(),
-    #                                                                         upper=next_interval.upper(),
-    #                                                                         lower_closed=next_interval.lower_closed(),
-    #                                                                         upper_closed=next_interval.lower_closed())[
-    #                                                            0])
-    #             curr_interval = RealSet.interval(lower=next_interval.upper(),
-    #                                              upper=curr_interval.upper(),
-    #                                              lower_closed=next_interval.upper_open(),
-    #                                              upper_closed=curr_interval.upper_closed())[0]
-    #         elif next_interval.upper() > curr_interval.upper() or (
-    #                 next_interval.upper() == curr_interval.upper() and next_interval.upper_closed() and curr_interval.upper_open()):
-    #             result_pairs[curr_func + next_func].append(RealSet.interval(lower=next_interval.lower(),
-    #                                                                         upper=curr_interval.upper(),
-    #                                                                         lower_closed=next_interval.lower_closed(),
-    #                                                                         upper_closed=curr_interval.upper_closed())[
-    #                                                            0])
-    #             curr_interval = RealSet.interval(lower=curr_interval.upper(),
-    #                                              upper=next_interval.upper(),
-    #                                              lower_closed=curr_interval.upper_open(),
-    #                                              upper_closed=next_interval.upper_closed())[0]
-    #             curr_func = next_func
-    #         else:
-    #             result_pairs[curr_func + next_func].append(RealSet.interval(lower=next_interval.lower(),
-    #                                                                         upper=curr_interval.upper(),
-    #                                                                         lower_closed=next_interval.lower_closed(),
-    #                                                                         upper_closed=curr_interval.upper_closed())[
-    #                                                            0])
-    #             curr_interval = None
-    #             curr_func = None
-    #
-    #     if curr_interval:
-    #         result_pairs[curr_func].append(curr_interval)
-    #
-    #     return PiecewiseFunction((RealSet(*result_pairs[func]), func) for func in result_pairs)
-
 
 piecewise = PiecewiseFunction
