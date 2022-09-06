@@ -1059,6 +1059,7 @@ class PiecewiseFunction_polynomial(ModuleElement):
 
         return PiecewiseFunction_polynomial((dom, func._derivative(var)) for dom, func in self.__iter__())
 
+
     def plot(self, *args, **kwds):
         r"""
         Returns the plot of self.
@@ -1069,12 +1070,14 @@ class PiecewiseFunction_polynomial(ModuleElement):
 
         EXAMPLES::
 
-            sage: sage: R.<t> = QQ[]
+            sage: R.<t> = QQ[]
             sage: p1 = PiecewisePolynomial([[[0, 2], t], [[3, 5], t^2], [[6, 7], 1 - t]])
             sage: p2 = PiecewisePolynomial([[[0, 2], t+1], [[5, 6], t], [[7, 7], -t]])
             sage: p3 = PiecewisePolynomial([[RealSet.closed_open(1, 2), (t+1)^2]])
-            sage: p=PiecewisePolynomial.PiecewisePolynomial_add([p1,p2, p3],False)
+            sage: p = PiecewisePolynomial.PiecewisePolynomial_add([p1,p2, p3],True); p
+            PiecewisePolynomial(t |--> 2*t + 1 on [0, 1), t |--> t^2 + 4*t + 2 on [1, 2), t |--> 5 on {2}, t |--> t^2 on [3, 5), t |--> 30 on {5}, t |--> t on (5, 6), t |--> 1 on {6}, t |--> -t + 1 on (6, 7), t |--> -13 on {7}; t)
             sage: p.plot()
+            Graphics object consisting of 3 graphics primitives
 
         """
 
@@ -1131,7 +1134,7 @@ class PiecewiseFunction_polynomial(ModuleElement):
             b = i._upper
             left_closed = True
             right_closed = True
-            if not i.is_point():  # coho interval
+            if not i.is_point():
                 left_closed = i._lower_closed
                 right_closed = i._upper_closed
             # using the above data.
@@ -1155,15 +1158,15 @@ class PiecewiseFunction_polynomial(ModuleElement):
                         delete_one_time_plot_kwds(point_kwds)
                     if not (left_closed or last_end_point == [a, f(a)] and last_closed):
                         # plot current open left endpoint
-                        g += point([a, f(a)], color=color, pointsize=23, **point_kwds)
+                        g += point([(a, f(a))], color=color, pointsize=23, **point_kwds)
                         delete_one_time_plot_kwds(point_kwds)
-                        g += point([a, f(a)], rgbcolor='white', pointsize=10, **point_kwds)
+                        g += point([(a, f(a))], rgbcolor='white', pointsize=10, **point_kwds)
                     if left_closed and last_end_point != [] and last_end_point != [a, f(a)] and not last_closed:
                         # plot current closed left endpoint
-                        g += point([a, f(a)], color=color, pointsize=23, **point_kwds)
+                        g += point([(a, f(a))], color=color, pointsize=23, **point_kwds)
                         delete_one_time_plot_kwds(point_kwds)
                     last_closed = right_closed
-                    last_end_point = [b, f(b)]
+                    last_end_point = [(b, f(b))]
             if a < b and (float(b) - float(a)) / (plot_pts - 1) != float(0):
                 # We do not plot anything if (float(b) - float(a))/(plot_pts-1) == float(0) because
                 # otherwise the plot method in src/plot/misc.py complains that
@@ -1175,17 +1178,18 @@ class PiecewiseFunction_polynomial(ModuleElement):
                 delete_one_time_plot_kwds(kwds)
                 # delete_one_time_plot_kwds(point_kwds)
             elif a == b and left_closed and right_closed:
-                g += point([a, f(a)], color=color, pointsize=23, **point_kwds)
+                g += point([(a, f(a))], rgbcolor=color, size=23, **point_kwds)
                 delete_one_time_plot_kwds(point_kwds)
         # # plot open rightmost endpoint. minimal functions don't need this.
-        # if discontinuity_markers and not last_closed:
-        #     g += point(last_end_point, color=color, pointsize=23, **point_kwds)
-        #     delete_one_time_plot_kwds(point_kwds)
-        #     g += point(last_end_point, rgbcolor='white', pointsize=10, **point_kwds)
+        if discontinuity_markers and not last_closed:
+            g += point(last_end_point, rgbcolor=color, pointsize=23, **point_kwds)
+            delete_one_time_plot_kwds(point_kwds)
+            g += point(last_end_point, rgbcolor='white', pointsize=10, **point_kwds)
         # For empty functions, if ticks were provided, use them (for uniformity).
         if not g:
             g._set_extra_kwds(kwds)
         return g
+
 
 
 
