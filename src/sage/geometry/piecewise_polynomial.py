@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 r"""
-Piecewise-defined Functions
+Piecewise-defined Polynomial
 
-This module implement piecewise polynomial in a single variable. See
+This module implement piecewise polynomial on real set. See
 :mod:`sage.sets.real_set` for more information about how to construct
 subsets of the real line for the domains.
 
@@ -25,9 +25,7 @@ AUTHORS:
 """
 
 # ****************************************************************************
-#       Copyright (C) 2006 William Stein <wstein@gmail.com>
-#                     2006 David Joyner <wdjoyner@gmail.com>
-#                     2013 Volker Braun <vbraun.name@gmail.com>
+#       Copyright (C)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -37,13 +35,14 @@ AUTHORS:
 # ****************************************************************************
 
 from sage.rings.polynomial.polynomial_element import Polynomial, is_Polynomial
+from sage.plot.all import plot, Graphics, point
 from sage.sets.real_set import InternalRealInterval, RealSet
+from sage.structure.element import Element, ModuleElement
 from heapq import merge
 import bisect
-from sage.structure.element import Element, ModuleElement
 
 
-class Piecewise_Polynomial(ModuleElement):
+class PiecewiseFunction_polynomial(ModuleElement):
     def __init__(self, function_pieces):
         """
         Piecewise polynomial
@@ -80,8 +79,6 @@ class Piecewise_Polynomial(ModuleElement):
             Traceback (most recent call last):
             ...
             ValueError: Invalid function. Function type must be Polynomial, got <class 'sage.symbolic.expression.Expression'> for x + 1.
-
-
         """
         self.domain_list = []
         self.func_list = []
@@ -221,14 +218,14 @@ class Piecewise_Polynomial(ModuleElement):
         OUTPUT:
 
         A piecewise-defined polynomial. A ``ValueError`` will be raised
-        if more than 1 input
+        if more than 1 input or the input are not define.
 
         EXAMPLES::
 
             sage: R.<t> = QQ[]
-            sage: my_abs = PiecewisePolynomial([((-1, 0), -t), ([0, 1], t)]);  my_abs
+            sage: p = PiecewisePolynomial([((-1, 0), -t), ([0, 1], t)]); p
             PiecewisePolynomial(t |--> -t on (-1, 0), t |--> t on [0, 1]; t)
-            sage: [ my_abs(i/5) for i in range(-4, 5)]
+            sage: [ p(i/5) for i in range(-4, 5)]
             [4/5, 3/5, 2/5, 1/5, 0, 1/5, 2/5, 3/5, 4/5]
         """
         val = None
@@ -254,11 +251,11 @@ class Piecewise_Polynomial(ModuleElement):
 
     def __len__(self):
         """
-        Return the number of "pieces"
+        Return the number of functions in the piecewise function.
 
         OUTPUT:
 
-        Integer
+       Integer, the number of function.
 
         EXAMPLES::
 
@@ -275,11 +272,11 @@ class Piecewise_Polynomial(ModuleElement):
 
     def __iter__(self):
         """
-        iter over piecewise polynomials
+        Iter over piecewise polynomials
 
         OUTPUT:
 
-        domains and functions
+        Iterator
 
         EXAMPLES::
 
@@ -300,7 +297,8 @@ class Piecewise_Polynomial(ModuleElement):
 
     def __add__(self, other):
         """
-        Add two identical domain Piecewise polynomials
+        Add two Piecewise polynomials that have identical domain,
+        A value error will raise if the domain is not identical
 
         INPUT:
 
@@ -332,13 +330,13 @@ class Piecewise_Polynomial(ModuleElement):
         if type(other) == type(self):
             return self.PiecewisePolynomial_add([self, other])
         else:
-            return Piecewise_Polynomial((dom, func + other) for dom, func in self.__iter__())
+            return PiecewiseFunction_polynomial((dom, func + other) for dom, func in self.__iter__())
 
     __radd__ = __add__
 
     def __eq__(self, other):
         """
-        Return if two piecewise polynomials are equal
+        Return if two piecewise polynomials has same varaible, and identical function and domain.
 
         INPUT:
 
@@ -346,7 +344,7 @@ class Piecewise_Polynomial(ModuleElement):
 
         OUTPUT:
 
-        Boolean
+        Boolean.
 
         EXAMPLES::
 
@@ -374,7 +372,7 @@ class Piecewise_Polynomial(ModuleElement):
 
     def __neg__(self):
         """
-        Return the negative of polynomials
+        Return the negative of piecewise polynomials.
 
         OUTPUT:
 
@@ -393,11 +391,12 @@ class Piecewise_Polynomial(ModuleElement):
             PiecewisePolynomial(t |--> -t on [0, 1], t |--> t - 2 on (1, 2); t)
         """
 
-        return Piecewise_Polynomial((dom, -func) for dom, func in self.__iter__())
+        return PiecewiseFunction_polynomial((dom, -func) for dom, func in self.__iter__())
 
     def __sub__(self, other):
         """
-        Subtraction another identical domain's piecewise polynomials
+        Subtraction another piecewise polynomials that has identical domain.
+        If the domains are not identical, value error will raise.
 
         INPUT:
 
@@ -432,7 +431,7 @@ class Piecewise_Polynomial(ModuleElement):
 
     def __mul__(self, other):
         r"""
-        multiply two identical domain piecewise polynomial
+        Multiply piecewise polynomial that has identical domains
 
         INPUT:
 
@@ -466,11 +465,10 @@ class Piecewise_Polynomial(ModuleElement):
         if type(other) == type(self):
             return self.PiecewisePolynomial_mul([self, other])
         else:
-            return Piecewise_Polynomial((dom, func * other) for dom, func in self.__iter__())
+            return PiecewiseFunction_polynomial((dom, func * other) for dom, func in self.__iter__())
 
     __rmul__ = __mul__
 
-    # Other should be a number
     def __truediv__(self, other):
         """
         Divide by a scalar.
@@ -481,7 +479,7 @@ class Piecewise_Polynomial(ModuleElement):
 
         OUTPUT:
 
-        A piecewise-defined polynomial
+        A piecewise polynomial.
 
         EXAMPLES::
 
@@ -499,7 +497,7 @@ class Piecewise_Polynomial(ModuleElement):
             sage: p/2
             PiecewisePolynomial(t |--> -1/2*t + 1/2 on [0, 1] ∪ [4, 5], t |--> 1/2*t^4 - 1/2*t^2 on [2, 3] ∪ [6, 7]; t)
         """
-        return Piecewise_Polynomial((dom, func / other) for dom, func in self.__iter__())
+        return PiecewiseFunction_polynomial((dom, func / other) for dom, func in self.__iter__())
 
     def __pow__(self, power):
 
@@ -508,7 +506,7 @@ class Piecewise_Polynomial(ModuleElement):
 
         INPUT:
 
-        - ``power``: scalar
+        - ``power``-- scalar
 
         OUTPUT:
 
@@ -530,12 +528,12 @@ class Piecewise_Polynomial(ModuleElement):
             sage: p^2
             PiecewisePolynomial(t |--> t^2 - 2*t + 1 on [0, 1] ∪ [4, 5], t |--> t^8 - 2*t^6 + t^4 on [2, 3] ∪ [6, 7]; t)
         """
-        return Piecewise_Polynomial((dom, func ** power) for dom, func in self.__iter__())
+        return PiecewiseFunction_polynomial((dom, func ** power) for dom, func in self.__iter__())
 
     @staticmethod
     def _iterator(realset, i):
         """
-        scan function for scan-line
+        scan function for scan-line methods.
 
         INPUT:
 
@@ -570,73 +568,130 @@ class Piecewise_Polynomial(ModuleElement):
             yield ((interval._lower, 1 - int(interval._lower_closed)), 1), i
             yield ((interval._upper, int(interval._upper_closed)), -1), i
 
-    @staticmethod
-    def finest_partitions(*real_set_collection):
-        """
-        Given a set of realsets, this function computes the set of intervals that could represent each realset by
-        taking disjoint union of a subset of such intervals.
+    # @staticmethod
+    # def finest_partitions(*real_set_collection):
+    #     """
+    #     Given a set of realsets, this function computes the set of intervals that could represent each realset by
+    #     taking disjoint union of a subset of such intervals.
+    #
+    #     INPUT:
+    #
+    #     - ``*real_set_collection`` -- a list/tuple/iterable of :class:`RealSet`
+    #       or data that defines one.
+    #
+    #     OUTPUT:
+    #
+    #     iterator of real sets and indicator that which input realsest contain the output realset
+    #
+    #     EXAMPLES::
+    #
+    #         sage: D1 = RealSet([0, 1], [4, 5])
+    #         sage: D2 = RealSet([2, 3], [6, 7])
+    #         sage: D3 = RealSet([0, 1], [4, 5])
+    #         sage: D4 = RealSet([2, 3], [6, 7])
+    #         sage: list( PiecewisePolynomial.finest_partitions(D1,D2,D3,D4))
+    #         [([0, 1], (1, 0, 1, 0)),
+    #          ([2, 3], (0, 1, 0, 1)),
+    #          ([4, 5], (1, 0, 1, 0)),
+    #          ([6, 7], (0, 1, 0, 1))]
+    #
+    #     TESTS::
+    #
+    #         sage: D1 = RealSet((0, 1))
+    #         sage: D2 = RealSet([-1, 1])
+    #         sage: D3 = RealSet((1, 2))
+    #         sage: D4 = RealSet([1, 3])
+    #         sage: list( PiecewisePolynomial.finest_partitions(D1,D2,D3,D4))
+    #         [([-1, 0], (0, 1, 0, 0)),
+    #          ((0, 1), (1, 1, 0, 0)),
+    #          ({1}, (0, 1, 0, 1)),
+    #          ((1, 2), (0, 0, 1, 1)),
+    #          ([2, 3], (0, 0, 0, 1))]
+    #     """
+    #     scan = [PiecewiseFunction_polynomial._iterator(real_set, i) for i, real_set in enumerate(real_set_collection)]
+    #     indicator = [0] * len(scan)
+    #     indicator_sum = 0
+    #     scan = merge(*scan)
+    #     prev_event = None
+    #
+    #     for event, set_id in scan:
+    #         (x, epsilon), delta = event
+    #         if prev_event and event > prev_event:
+    #             (x_, epsilon_), _ = prev_event
+    #             yield RealSet(InternalRealInterval(x_, epsilon_ == 0, x, epsilon == 1)), tuple(indicator)
+    #         indicator[set_id] += delta
+    #         indicator_sum += delta
+    #
+    #         prev_event = (x, epsilon), 1
+    #         if indicator_sum == 0:
+    #             prev_event = None
 
-        INPUT:
-
-        - ``*real_set_collection`` -- a list/tuple/iterable of :class:`RealSet`
-          or data that defines one.
-
-        OUTPUT:
-
-        iterator of realsets and indicator that which input realsest contain the output realset
-
-        EXAMPLES::
-
-            sage: D1 = RealSet([0, 1], [4, 5])
-            sage: D2 = RealSet([2, 3], [6, 7])
-            sage: D3 = RealSet([0, 1], [4, 5])
-            sage: D4 = RealSet([2, 3], [6, 7])
-            sage: list( PiecewisePolynomial.finest_partitions(D1,D2,D3,D4))
-            [([0, 1], (1, 0, 1, 0)),
-             ([2, 3], (0, 1, 0, 1)),
-             ([4, 5], (1, 0, 1, 0)),
-             ([6, 7], (0, 1, 0, 1))]
-
-        TESTS::
-
-            sage: D1 = RealSet((0, 1))
-            sage: D2 = RealSet([-1, 1])
-            sage: D3 = RealSet((1, 2))
-            sage: D4 = RealSet([1, 3])
-            sage: list( PiecewisePolynomial.finest_partitions(D1,D2,D3,D4))
-            [([-1, 0], (0, 1, 0, 0)),
-             ((0, 1), (1, 1, 0, 0)),
-             ({1}, (0, 1, 0, 1)),
-             ((1, 2), (0, 0, 1, 1)),
-             ([2, 3], (0, 0, 0, 1))]
-        """
-        scan = [Piecewise_Polynomial._iterator(real_set, i) for i, real_set in enumerate(real_set_collection)]
-        indicator = [0] * len(scan)
-        indicator_sum = 0
-        scan = merge(*scan)
-        prev_event = None
-
-        for event, set_id in scan:
-            (x, epsilon), delta = event
-            if prev_event and event > prev_event:
-                (x_, epsilon_), _ = prev_event
-                yield RealSet(InternalRealInterval(x_, epsilon_ == 0, x, epsilon == 1)), tuple(indicator)
-            indicator[set_id] += delta
-            indicator_sum += delta
-
-            prev_event = (x, epsilon), 1
-            if indicator_sum == 0:
-                prev_event = None
+    # @staticmethod
+    # def PiecewisePolynomial_add(PiecewisePolynomial_collection, union=None):
+    #     """
+    #     Compute the sum of PiecewisePolynomial collections
+    #
+    #     INPUT:
+    #
+    #     - ``PiecewisePolynomial_collection`` -- a list of PiecewisePolynomial polynomials
+    #     - ``union``-- If not given, then add same domains PiecewisePolynomial polynomial;
+    #                 if True, take union of those PiecewisePolynomial collection, then add;
+    #                 if False, take intersection of PiecewisePolynomial collection, then add
+    #     OUTPUT:
+    #
+    #     Sum of the input PiecewisePolynomial polynomials
+    #
+    #     EXAMPLES::
+    #
+    #        sage: R.<t> = QQ[]
+    #        sage: p1 = PiecewisePolynomial([[[0, 2], t], [[3, 5], t^2], [[6, 7], 1 - t]])
+    #        sage: p2 = PiecewisePolynomial([[[0, 2], t+1], [[5, 6], t], [[7, 7], -t]])
+    #        sage: p3 = PiecewisePolynomial([[RealSet.closed_open(1, 2), (t+1)^2]])
+    #        sage: PiecewisePolynomial.PiecewisePolynomial_add([p1,p2, p3],True)
+    #        PiecewisePolynomial(t |--> 2*t + 1 on [0, 1), t |--> t^2 + 4*t + 2 on [1, 2), t |--> 5 on {2}, t |--> t^2 on [3, 5), t |--> 30 on {5}, t |--> t on (5, 6), t |--> 1 on {6}, t |--> -t + 1 on (6, 7), t |--> -13 on {7}; t)
+    #        sage: PiecewisePolynomial.PiecewisePolynomial_add([p1,p2,p3],False)
+    #        PiecewisePolynomial(t |--> t^2 + 4*t + 2 on [1, 2); t)
+    #        sage: PiecewisePolynomial.PiecewisePolynomial_add([p1,p2,p3])
+    #        Traceback (most recent call last):
+    #        ...
+    #        ValueError: Inconsistent domains. Please set union=True for union, or False for intersection.
+    #     """
+    #
+    #     realset_info = []
+    #     for i, PiecewisePolynomial in enumerate(PiecewisePolynomial_collection):
+    #         for j in range(len(PiecewisePolynomial)):
+    #             realset_info.append((i, j))
+    #
+    #     result_pairs = []
+    #     p = PiecewiseFunction_polynomial.finest_partitions(*[dom for PiecewisePolynomial in PiecewisePolynomial_collection for dom, _ in PiecewisePolynomial])
+    #     for real_set, inds in p:
+    #         new_pair = [real_set, 0]
+    #         if sum(inds) < len(PiecewisePolynomial_collection):
+    #             if union is None:
+    #                 raise ValueError(
+    #                     "Inconsistent domains. Please set union=True for union, or False for intersection.")
+    #             elif union is False:
+    #                 continue
+    #
+    #         # i - index for realset, ind: True or False
+    #         for i, ind in enumerate(inds):
+    #             if ind > 0:
+    #                 realset_id, func_id = realset_info[i]
+    #                 new_pair[1] += PiecewisePolynomial_collection[realset_id].func_list[func_id]
+    #         result_pairs.append(new_pair)
+    #
+    #     return PiecewiseFunction_polynomial(result_pairs)
 
     @staticmethod
     def PiecewisePolynomial_add(PiecewisePolynomial_collection, union=None):
         """
-        Compute the sum of PiecewisePolynomial collections
+        Compute the sum of piecewise polynomial collections.
 
         INPUT:
 
         - ``PiecewisePolynomial_collection`` -- a list of PiecewisePolynomial polynomials
-        - ``union``: If not given, then add same domains PiecewisePolynomial polynomial;
+        - ``union``-- Default as none which assume that piecewise polynomials have identical domain,
+                    value error will raisse if the domains are not identical.
                     if True, take union of those PiecewisePolynomial collection, then add;
                     if False, take intersection of PiecewisePolynomial collection, then add
         OUTPUT:
@@ -660,29 +715,49 @@ class Piecewise_Polynomial(ModuleElement):
         """
 
         realset_info = []
+        indicator = []
+        indicator_sum = 0
+        scan = []
+        k = 0
         for i, PiecewisePolynomial in enumerate(PiecewisePolynomial_collection):
-            for j in range(len(PiecewisePolynomial)):
+            for j, (realset, func) in enumerate(PiecewisePolynomial):
                 realset_info.append((i, j))
+                indicator.append(0)
+                scan.append(PiecewiseFunction_polynomial._iterator(realset, k))
+                k += 1
 
         result_pairs = []
-        p = Piecewise_Polynomial.finest_partitions(*[dom for PiecewisePolynomial in PiecewisePolynomial_collection for dom, _ in PiecewisePolynomial])
-        for real_set, inds in p:
-            new_pair = [real_set, 0]
-            if sum(inds) < len(PiecewisePolynomial_collection):
-                if union is None:
-                    raise ValueError(
-                        "Inconsistent domains. Please set union=True for union, or False for intersection.")
-                elif union is False:
-                    continue
+        scan = merge(*scan)
+        prev_event = None
+        for event, set_id in scan:
+            (x, epsilon), delta = event
+            if prev_event and event > prev_event:
+                (x_, epsilon_), _ = prev_event
+                realset, inds = RealSet(InternalRealInterval(x_, epsilon_ == 0, x, epsilon == 1)), tuple(indicator)
+                new_pair = [realset, 0]
+                execute = True
+                if sum(inds) < len(PiecewisePolynomial_collection):
+                    if union is None:
+                        raise ValueError(
+                            "Inconsistent domains. Please set union=True for union, or False for intersection.")
+                    elif union is False:
+                        execute = False
+                if execute:
+                    # i - index for realset, ind: True or False
+                    for i, ind in enumerate(inds):
+                        if ind > 0:
+                            realset_id, func_id = realset_info[i]
+                            new_pair[1] += PiecewisePolynomial_collection[realset_id].func_list[func_id]
+                    result_pairs.append(new_pair)
 
-            # i - index for realset, ind: True or False
-            for i, ind in enumerate(inds):
-                if ind > 0:
-                    realset_id, func_id = realset_info[i]
-                    new_pair[1] += PiecewisePolynomial_collection[realset_id].func_list[func_id]
-            result_pairs.append(new_pair)
+            indicator[set_id] += delta
+            indicator_sum += delta
 
-        return Piecewise_Polynomial(result_pairs)
+            prev_event = (x, epsilon), 1
+            if indicator_sum == 0:
+                prev_event = None
+
+        return PiecewiseFunction_polynomial(result_pairs)
 
     @staticmethod
     def PiecewisePolynomial_mul(PiecewisePolynomial_collection, union=None):
@@ -692,7 +767,7 @@ class Piecewise_Polynomial(ModuleElement):
         INPUT:
 
         - ``PiecewisePolynomial_collection`` -- a list of PiecewisePolynomial polynomials
-        - ``union``: If not given, then multiply same domains PiecewisePolynomial polynomial;
+        - ``union``-- If not given, then multiply same domains PiecewisePolynomial polynomial;
                     if True, take union of those PiecewisePolynomial collection, then multiply;
                     if False, take intersection of PiecewisePolynomial collection, then multiply;
         OUTPUT:
@@ -716,29 +791,56 @@ class Piecewise_Polynomial(ModuleElement):
         """
 
         realset_info = []
-        for i, piecewise in enumerate(PiecewisePolynomial_collection):
-            for j in range(len(piecewise)):
+        indicator = []
+        indicator_sum = 0
+        scan = []
+        k = 0
+        for i, PiecewisePolynomial in enumerate(PiecewisePolynomial_collection):
+            for j, (realset, func) in enumerate(PiecewisePolynomial):
                 realset_info.append((i, j))
+                indicator.append(0)
+                scan.append(PiecewiseFunction_polynomial._iterator(realset, k))
+                k += 1
 
         result_pairs = []
-        p = Piecewise_Polynomial.finest_partitions(*[dom for piecewise in PiecewisePolynomial_collection for dom, _ in piecewise])
-        for real_set, inds in p:
-            new_pair = [real_set, 1]
-            if sum(inds) < len(PiecewisePolynomial_collection):
-                if union is None:
-                    raise ValueError(
-                        "Inconsistent domains. Please set union=True for union, or False for intersection.")
-                elif union is False:
-                    continue
+        scan = merge(*scan)
+        prev_event = None
+        for event, set_id in scan:
+            (x, epsilon), delta = event
+            if prev_event and event > prev_event:
+                (x_, epsilon_), _ = prev_event
+                realset, inds = RealSet(InternalRealInterval(x_, epsilon_ == 0, x, epsilon == 1)), tuple(indicator)
+                new_pair = [realset, 1]
+                execute = True
+                if sum(inds) < len(PiecewisePolynomial_collection):
+                    if union is None:
+                        raise ValueError(
+                            "Inconsistent domains. Please set union=True for union, or False for intersection.")
+                    elif union is False:
+                        execute = False
+                if execute:
+                    # i - index for realset, ind: True or False
+                    for i, ind in enumerate(inds):
+                        if ind > 0:
+                            realset_id, func_id = realset_info[i]
+                            new_pair[1] *= PiecewisePolynomial_collection[realset_id].func_list[func_id]
+                    result_pairs.append(new_pair)
 
-            # i - index for realset, ind: True or False
-            for i, ind in enumerate(inds):
-                if ind > 0:
-                    realset_id, func_id = realset_info[i]
-                    new_pair[1] *= PiecewisePolynomial_collection[realset_id].func_list[func_id]
-            result_pairs.append(new_pair)
+            indicator[set_id] += delta
+            indicator_sum += delta
 
-        return Piecewise_Polynomial(result_pairs)
+            prev_event = (x, epsilon), 1
+            if indicator_sum == 0:
+                prev_event = None
+
+        return PiecewiseFunction_polynomial(result_pairs)
+
+    def _interval_iterator(self):
+        list = []
+        for dom, func in self:
+            for interval in dom:
+                list.append([interval, func])
+        return list
 
     def is_continuous(self):
         """
@@ -788,6 +890,7 @@ class Piecewise_Polynomial(ModuleElement):
         Boolean.
 
         EXAMPLES::
+
             sage: R.<t> = QQ[]
             sage: f1 = t
             sage: f2 = (t - 1) ^ 2 + 1
@@ -839,7 +942,7 @@ class Piecewise_Polynomial(ModuleElement):
 
         INPUT:
 
-        - ``x0``: a number in domain of piecewise polynomial
+        - ``x0``-- a number in domain of piecewise polynomial
 
         Returns:
 
@@ -884,7 +987,7 @@ class Piecewise_Polynomial(ModuleElement):
 
         INPUT:
 
-        -``x0``: A number in domain of piecewise polynomial
+        -``x0`` -- A number in domain of piecewise polynomial
 
         Returns:
 
@@ -935,7 +1038,7 @@ class Piecewise_Polynomial(ModuleElement):
 
         INPUT:
 
-        - ``var``: the variable
+        - ``var``-- the variable
 
         Returns:
 
@@ -954,7 +1057,136 @@ class Piecewise_Polynomial(ModuleElement):
             PiecewisePolynomial(t |--> -1 on (-oo, 1) ∪ (5, 6), t |--> 4*t^3 on [1, 2] ∪ [7, +oo); t)
         """
 
-        return Piecewise_Polynomial((dom, func._derivative(var)) for dom, func in self.__iter__())
+        return PiecewiseFunction_polynomial((dom, func._derivative(var)) for dom, func in self.__iter__())
+
+    def plot(self, *args, **kwds):
+        r"""
+        Returns the plot of self.
+
+        Keyword arguments are passed onto the plot command for each piece
+        of the function. E.g., the ``plot_points`` keyword affects each
+        segment of the plot.
+
+        EXAMPLES::
+
+            sage: sage: R.<t> = QQ[]
+            sage: p1 = PiecewisePolynomial([[[0, 2], t], [[3, 5], t^2], [[6, 7], 1 - t]])
+            sage: p2 = PiecewisePolynomial([[[0, 2], t+1], [[5, 6], t], [[7, 7], -t]])
+            sage: p3 = PiecewisePolynomial([[RealSet.closed_open(1, 2), (t+1)^2]])
+            sage: p=PiecewisePolynomial.PiecewisePolynomial_add([p1,p2, p3],False)
+            sage: p.plot()
+
+        """
+
+        def delete_one_time_plot_kwds(kwds):
+            if 'legend_label' in kwds:
+                del kwds['legend_label']
+            if 'ticks' in kwds:
+                del kwds['ticks']
+            if 'tick_formatter' in kwds:
+                del kwds['tick_formatter']
+
+        g = Graphics()
+        if 'rgbcolor' in kwds:
+            color = kwds['rgbcolor']
+        elif 'color' in kwds:
+            color = kwds['color']
+        else:
+            color = 'blue'
+        if not 'plot_points' in kwds:
+            plot_pts = 200
+        else:
+            plot_pts = kwds['plot_points']
+        ### Code duplication with xmin/xmax code in plot.py.
+        n = len(args)
+        xmin = None
+        xmax = None
+        if n == 0:
+            # if there are no extra args, try to get xmin,xmax from
+            # keyword arguments
+            xmin = kwds.pop('xmin', None)
+            xmax = kwds.pop('xmax', None)
+        elif n == 1:
+            # if there is one extra arg, then it had better be a tuple
+            xmin, xmax = args[0]
+            args = []
+        elif n == 2:
+            # if there are two extra args, they should be xmin and xmax
+            xmin = args[0]
+            xmax = args[1]
+            args = []
+        point_kwds = dict()
+        if 'alpha' in kwds:
+            point_kwds['alpha'] = kwds['alpha']
+        if 'legend_label' in kwds and self.is_discrete():
+            point_kwds['legend_label'] = kwds['legend_label']
+        # Whether to plot discontinuity markers
+        discontinuity_markers = kwds.pop('discontinuity_markers', True)
+        # record last right endpoint, then compare with next left endpoint to decide whether it needs to be plotted.
+        last_end_point = []
+        last_closed = True
+        lists = self._interval_iterator()
+        for (i, f) in lists:
+            a = i._lower
+            b = i._upper
+            left_closed = True
+            right_closed = True
+            if not i.is_point():  # coho interval
+                left_closed = i._lower_closed
+                right_closed = i._upper_closed
+            # using the above data.
+            if (xmin is not None) and (a < xmin):
+                a = xmin
+                left_closed = True
+            if (xmax is not None) and (b > xmax):
+                b = xmax
+                right_closed = True
+            if discontinuity_markers:
+                # Handle open/half-open intervals here
+                if a < b or (a == b and left_closed and right_closed):
+                    if not (last_closed or last_end_point == [a, f(a)] and left_closed):
+                        # plot last open right endpoint
+                        g += point(last_end_point, color=color, pointsize=23, **point_kwds)
+                        delete_one_time_plot_kwds(point_kwds)
+                        g += point(last_end_point, rgbcolor='white', pointsize=10, **point_kwds)
+                    if last_closed and last_end_point != [] and last_end_point != [a, f(a)] and not left_closed:
+                        # plot last closed right endpoint
+                        g += point(last_end_point, color=color, pointsize=23, **point_kwds)
+                        delete_one_time_plot_kwds(point_kwds)
+                    if not (left_closed or last_end_point == [a, f(a)] and last_closed):
+                        # plot current open left endpoint
+                        g += point([a, f(a)], color=color, pointsize=23, **point_kwds)
+                        delete_one_time_plot_kwds(point_kwds)
+                        g += point([a, f(a)], rgbcolor='white', pointsize=10, **point_kwds)
+                    if left_closed and last_end_point != [] and last_end_point != [a, f(a)] and not last_closed:
+                        # plot current closed left endpoint
+                        g += point([a, f(a)], color=color, pointsize=23, **point_kwds)
+                        delete_one_time_plot_kwds(point_kwds)
+                    last_closed = right_closed
+                    last_end_point = [b, f(b)]
+            if a < b and (float(b) - float(a)) / (plot_pts - 1) != float(0):
+                # We do not plot anything if (float(b) - float(a))/(plot_pts-1) == float(0) because
+                # otherwise the plot method in src/plot/misc.py complains that
+                # "start point and endpoint must be different"
+                g += plot(f, *args, xmin=a, xmax=b, zorder=-1, **kwds)
+                # If it's the first piece, pass all arguments. Otherwise,
+                # filter out 'legend_label' so that we don't add each
+                # piece to the legend separately (trac #12651).
+                delete_one_time_plot_kwds(kwds)
+                # delete_one_time_plot_kwds(point_kwds)
+            elif a == b and left_closed and right_closed:
+                g += point([a, f(a)], color=color, pointsize=23, **point_kwds)
+                delete_one_time_plot_kwds(point_kwds)
+        # # plot open rightmost endpoint. minimal functions don't need this.
+        # if discontinuity_markers and not last_closed:
+        #     g += point(last_end_point, color=color, pointsize=23, **point_kwds)
+        #     delete_one_time_plot_kwds(point_kwds)
+        #     g += point(last_end_point, rgbcolor='white', pointsize=10, **point_kwds)
+        # For empty functions, if ticks were provided, use them (for uniformity).
+        if not g:
+            g._set_extra_kwds(kwds)
+        return g
 
 
-PiecewisePolynomial = Piecewise_Polynomial
+
+PiecewisePolynomial = PiecewiseFunction_polynomial
